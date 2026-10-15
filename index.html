@@ -215,6 +215,9 @@ table.t tr.click { cursor: pointer; }
 .lock .msg { min-height: 1.4em; color: #ffd2cc; }
 .lock .box { color: var(--ink); text-align: left; max-width: 420px; }
 .setup { max-width: 560px; }
+.lock.hide { position: fixed; inset: 0; z-index: 200; user-select: none; -webkit-user-select: none; touch-action: none; }
+.hide-hint { position: absolute; bottom: 24px; font-size: .8rem; opacity: .35; }
+.lock.hide.holding .hide-hint { opacity: .8; }
 .recov { font: 700 1.6rem/1.2 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .08em; background: var(--soft); border-radius: 12px; padding: 14px; text-align: center; margin: 10px 0; user-select: all; }
 
 /* fiche parents */
@@ -251,7 +254,7 @@ table.t tr.click { cursor: pointer; }
    Toutes les données restent sur l'appareil, chiffrées (AES-GCM) avec une clé
    protégée par le code du professeur (PBKDF2). Rien n'est envoyé sur internet.
    ========================================================= */
-const APP_VERSION = '2026-10-15.4';
+const APP_VERSION = '2026-10-15.5';
 const LS_KEYS = 'maclasse-cles', LS_DATA = 'maclasse-donnees', LS_TRY = 'maclasse-essais';
 const DAY = 864e5;
 const $ = (s, r = document) => r.querySelector(s);
@@ -309,18 +312,60 @@ async function openWith(raw) {
   const d = ls.get(LS_DATA);
   S = d ? JSON.parse(td.decode(await aesDec(DK, JSON.parse(d)))) : defaultState();
   migrate(S);
+  touchSession(true);
 }
 async function lock() {
   if (!S) return;
   await flush();
+  try { sessionStorage.removeItem(SESS); } catch (e) { /* rien */ }
+  $('#hide')?.remove();
   S = null; DK = null; RAW = null; closeSheet(); hideToast();
   view = { name: 'home' };
   render();
 }
-let idleT = null, fileOpUntil = 0;
-function bump() { clearTimeout(idleT); if (S && S.settings.lockMin > 0) idleT = setTimeout(lock, S.settings.lockMin * 60000); }
+/* Session : le code n'est redemandé qu'après un délai sans utiliser l'outil (changer d'onglet ne verrouille pas).
+   La clé est gardée dans la mémoire de l'onglet (sessionStorage), effacée à la fermeture de l'onglet ou avec 🔒. */
+const SESS = 'maclasse-session';
+let idleT = null, fileOpUntil = 0, sessUntil = 0, lastTouch = 0;
+function sessionEnd(now = Date.now()) {
+  const m = S ? S.settings.lockMin : 15;
+  if (m === -1) { const d = new Date(now); d.setHours(23, 59, 59, 0); return d.getTime(); }
+  return now + Math.max(1, m) * 60000;
+}
+function touchSession(force) {
+  if (!S || !RAW) return;
+  const now = Date.now();
+  sessUntil = sessionEnd(now);
+  if (force || now - lastTouch > 15000) { lastTouch = now; try { sessionStorage.setItem(SESS, JSON.stringify({ raw: toB64(RAW), until: sessUntil })); } catch (e) { /* rien */ } }
+}
+function bump() {
+  clearTimeout(idleT); if (!S) return;
+  touchSession();
+  idleT = setTimeout(() => { if (S && Date.now() >= sessUntil) lock(); else bump(); }, Math.max(1000, sessUntil - Date.now() + 500));
+}
 ['pointerdown', 'keydown'].forEach((ev) => document.addEventListener(ev, bump, { passive: true }));
-document.addEventListener('visibilitychange', () => { if (document.hidden && S && Date.now() > fileOpUntil) lock(); });
+document.addEventListener('visibilitychange', () => {
+  if (!S) return;
+  if (document.hidden) { flush(); touchSession(true); }
+  else if (Date.now() > sessUntil && Date.now() > fileOpUntil) lock();
+});
+async function resumeSession() {
+  let ss = null; try { ss = JSON.parse(sessionStorage.getItem(SESS) || 'null'); } catch (e) { ss = null; }
+  if (!ss || !ss.raw || !(ss.until > Date.now()) || !hasKeys()) return false;
+  try { await openWith(fromB64(ss.raw)); } catch (e) { try { sessionStorage.removeItem(SESS); } catch (_) { /* rien */ } return false; }
+  return true;
+}
+/** Écran caché sans code (le temps qu'un élève regarde) : on revient en maintenant le doigt appuyé */
+function hideScreen() {
+  const o = document.createElement('div'); o.id = 'hide'; o.className = 'lock hide';
+  o.innerHTML = '<div class="clock" id="hclk"></div><div class="date" id="hdt"></div><p class="hide-hint">Maintiens le doigt appuyé pour revenir</p>';
+  document.body.appendChild(o);
+  const tick = () => { if (!document.getElementById('hclk')) return clearInterval(t); const d = new Date(), l = dLong(d); $('#hclk').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`; $('#hdt').textContent = l.charAt(0).toUpperCase() + l.slice(1); };
+  const t = setInterval(tick, 10000); tick();
+  let hold = null;
+  o.addEventListener('pointerdown', () => { o.classList.add('holding'); hold = setTimeout(() => { o.remove(); }, 900); });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => o.addEventListener(ev, () => { o.classList.remove('holding'); clearTimeout(hold); }));
+}
 
 /* ---------- Données ---------- */
 const DEFAULT_MOTIFS = [
@@ -345,13 +390,14 @@ function defaultState() {
   return {
     v: 1, created: Date.now(), classes: [], rooms: [], plans: {}, events: [], done: [], lastBackup: 0,
     motifs: DEFAULT_MOTIFS.map((m) => ({ ...m })),
-    settings: { neg: 3, pos: 5, posAmen: 3, posDays: 14, valorDays: 7, invisibleDays: 14, lockMin: 3, prof: '', etab: '', view: 'back' },
+    settings: { neg: 3, pos: 5, posAmen: 3, posDays: 14, valorDays: 7, invisibleDays: 14, lockMin: 15, prof: '', etab: '', view: 'back' },
   };
 }
 function migrate(s) {
   const d = defaultState();
   for (const k of Object.keys(d)) if (s[k] === undefined) s[k] = d[k];
   s.settings = { ...d.settings, ...s.settings };
+  if (!s.settings.lockV2) { s.settings.lockV2 = 1; if (s.settings.lockMin === 3) s.settings.lockMin = 15; if (s.settings.lockMin === 0) s.settings.lockMin = -1; }
   for (const r of s.rooms) migrateRoom(r, s.plans);
   for (const c of s.classes) { c.sep = c.sep || []; for (const t of c.students) { t.amenM = t.amenM || []; } }
 }
@@ -566,12 +612,13 @@ function bindTablesEditor(room) {
 /* ---------- Petits composants ---------- */
 const app = document.getElementById('app');
 function bar(title, back) {
-  return `<header class="bar">${back ? '<button class="ib" id="b-back" aria-label="Retour">←</button>' : '<span class="logo" aria-hidden="true">▦</span>'}<h1>${title}</h1><div class="bar-r"><button class="ib" id="b-lock" aria-label="Verrouiller" title="Verrouiller (écran neutre)">🔒</button></div></header>`;
+  return `<header class="bar">${back ? '<button class="ib" id="b-back" aria-label="Retour">←</button>' : '<span class="logo" aria-hidden="true">▦</span>'}<h1>${title}</h1><div class="bar-r"><button class="ib" id="b-hide" aria-label="Masquer l'écran" title="Masquer l'écran (sans code)">🙈</button><button class="ib" id="b-lock" aria-label="Verrouiller" title="Verrouiller (le code sera demandé)">🔒</button></div></header>`;
 }
 function mount(html, back) {
   app.innerHTML = html;
   const b = $('#b-back'); if (b && back) b.onclick = back;
   const l = $('#b-lock'); if (l) l.onclick = lock;
+  const hd = $('#b-hide'); if (hd) hd.onclick = hideScreen;
 }
 function go(v) { view = v; closeSheet(); render(); window.scrollTo(0, 0); }
 let toastT = null;
@@ -1249,8 +1296,8 @@ function renderSecurite() {
   let h = bar('Code et sauvegarde', () => go({ name: 'home' })) + '<main class="wrap">';
   h += `<h2>💾 Sauvegarde</h2><div class="box"><p class="small">${S.lastBackup ? `Dernière sauvegarde : ${dLong(S.lastBackup)}.` : 'Aucune sauvegarde pour l\'instant.'} Si l'appareil est perdu ou réinitialisé, c'est le seul moyen de tout retrouver. Le fichier est chiffré : il faut ton code pour l'ouvrir.</p>
     <div class="row"><button class="btn primary" id="x-save">Sauvegarder maintenant</button><label class="btn">Restaurer un fichier<input type="file" id="x-file" accept=".json,application/json" hidden></label></div></div>`;
-  h += `<h2>🔒 Verrouillage</h2><div class="box"><label>Écran neutre après <select id="x-lock">${[1, 2, 3, 5, 10, 0].map((m) => `<option value="${m}"${s.lockMin === m ? ' selected' : ''}>${m ? m + ' min sans toucher l\'écran' : 'jamais (déconseillé)'}</option>`).join('')}</select></label>
-    <p class="small muted">L'outil se verrouille aussi dès que tu changes d'appli ou que l'écran s'éteint, et avec 🔒 en haut.</p></div>`;
+  h += `<h2>🔒 Verrouillage</h2><div class="box"><label>Redemander le code si je n'ai pas utilisé l'outil depuis <select id="x-lock">${[[2, '2 min'], [5, '5 min'], [15, '15 min'], [30, '30 min'], [60, '1 heure'], [-1, 'la fin de la journée']].map(([m, l]) => `<option value="${m}"${s.lockMin === m ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+    <p class="small muted">Changer d'onglet ou d'appli ne verrouille pas : le code n'est redemandé qu'après ce délai sans utiliser l'outil, ou si tu fermes l'onglet. 🔒 verrouille tout de suite. 🙈 cache l'écran sans code (maintiens le doigt appuyé pour revenir). Garde le verrouillage de ta tablette activé.</p></div>`;
   h += `<h2>🔑 Changer de code</h2><div class="box"><form id="x-code"><label class="f"><span>Code actuel</span><input type="password" id="x-c0" autocomplete="current-password"></label><label class="f"><span>Nouveau code (6 caractères minimum)</span><input type="password" id="x-c1" autocomplete="new-password"></label><label class="f"><span>Retape le nouveau code</span><input type="password" id="x-c2" autocomplete="new-password"></label><p class="small" id="x-msg" style="color:var(--red)"></p><button class="btn">Changer</button></form>
     <p class="small muted">Code de secours perdu ? <button class="link small" id="x-rec">En créer un nouveau</button> (l'ancien ne marchera plus).</p></div>`;
   h += `<h2>🗑 Fin d'année</h2><div class="box"><p class="small">Le RGPD demande de ne pas garder ces notes plus longtemps que nécessaire. Fais une dernière sauvegarde si tu en as besoin, puis efface.</p>
@@ -1261,7 +1308,7 @@ function renderSecurite() {
   $('#x-save').onclick = exportBackup;
   $('#x-file').onclick = () => { fileOpUntil = Date.now() + 120000; };
   $('#x-file').onchange = importFile;
-  $('#x-lock').onchange = (e) => { s.lockMin = Number(e.target.value); save(); bump(); };
+  $('#x-lock').onchange = (e) => { s.lockMin = Number(e.target.value); save(); touchSession(true); bump(); };
   $('#x-code').onsubmit = async (e) => {
     e.preventDefault();
     const m = $('#x-msg'), c1 = $('#x-c1').value.trim();
@@ -1286,7 +1333,7 @@ function renderSecurite() {
 if (!window.crypto?.subtle) {
   app.innerHTML = '<div class="lock"><div class="box"><h2>Navigateur non compatible</h2><p>Ouvre cet outil depuis son adresse en <b>https://</b> avec un navigateur récent (Chrome, Safari, Firefox, Edge).</p></div></div>';
 } else {
-  render();
+  resumeSession().then(() => render());
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => { /* hors ligne indisponible */ });
 }
 </script>

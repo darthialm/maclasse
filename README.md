@@ -20,7 +20,9 @@ Outil pour tablette ou téléphone : en deux touches, tu notes une remarque ou u
 ## Sécurité et RGPD
 - **Tout reste sur l'appareil.** Rien n'est envoyé sur internet.
 - Les données sont **chiffrées avec ton code**, que tu choisis à la première ouverture. Le **code de secours** affiché à ce moment-là sert si tu oublies ton code : note-le sur papier.
-- **Écran neutre** (une horloge) : il s'affiche avec 🔒, après 3 minutes sans toucher l'écran, et dès que tu changes d'appli.
+- **Code** : il n'est pas redemandé quand tu changes d'onglet ou d'appli. Il l'est seulement après 15 minutes sans utiliser l'outil (réglable de 2 min à la fin de la journée), si tu fermes l'onglet, ou quand tu touches 🔒.
+- **🙈 Masquer** : cache l'écran derrière une horloge, sans code. Pour revenir, maintiens le doigt appuyé une seconde. Pratique quand un élève s'approche.
+- Garde le verrouillage de ta tablette activé (code ou empreinte).
 - **Sauvegarde** : 🔐 → « Sauvegarder maintenant ». Le fichier est chiffré : range-le sur ton ordinateur ou une clé USB. L'outil te le rappelle chaque semaine. Pense aussi à refaire une sauvegarde après avoir changé ton code.
 - **Fin d'année** : 🔐 → « Effacer toutes les remarques ».
 
