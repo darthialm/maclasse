@@ -72,7 +72,8 @@ label.f > span { display: block; font-weight: 600; margin-bottom: 4px; }
 .seat-in { width: 100%; height: 100%; border-radius: 10px; border: 1.5px dashed #cdd3cb; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; overflow: hidden; padding: 2px; }
 .seat.occ .seat-in { border: 1.5px solid var(--line); background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,.05); cursor: pointer; }
 .seat .nm { font-weight: 650; font-size: .84rem; line-height: 1.1; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bd { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; min-height: 16px; }
+.bd { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; }
+.bd:empty { display: none; }
 .d { font-style: normal; font-size: .72rem; font-weight: 800; border-radius: 99px; padding: 0 6px; line-height: 16px; }
 .d.n1 { background: var(--yel-soft); color: var(--yel); } .d.n2 { background: var(--or-soft); color: var(--or); } .d.n3 { background: var(--red); color: #fff; }
 .d.g { background: var(--red); color: #fff; } .d.p { background: var(--green-soft); color: var(--green); } .d.v { background: none; padding: 0; }
@@ -110,6 +111,17 @@ label.f > span { display: block; font-weight: 600; margin-bottom: 4px; }
 .side h3 { margin-top: 0; }
 .side .chips { flex-direction: column; flex-wrap: nowrap; }
 .side-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+
+/* sélection multiple */
+.seat.picked .seat-in, .li.picked, .chip.picked { outline: 3px solid var(--blue); outline-offset: -1px; background: var(--blue-soft) !important; }
+.li.picked .nm::before, .chip.picked::before { content: "✔ "; color: var(--blue); }
+.seat-in { position: relative; }
+.seat.picked .seat-in::after { content: "✔"; position: absolute; top: 1px; right: 4px; font-size: .72rem; font-weight: 800; color: var(--blue); }
+.multibar { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(12px, env(safe-area-inset-bottom)); z-index: 40; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; background: var(--card); border: 1.5px solid var(--blue); border-radius: 16px; padding: 8px 10px; box-shadow: 0 8px 24px rgba(0,0,0,.18); width: max-content; max-width: calc(100% - 24px); }
+.multibar > span { padding: 0 6px; }
+.has-multibar { padding-bottom: 140px; }
+#toast { bottom: max(16px, env(safe-area-inset-bottom)); }
+body:has(.multibar) #toast { bottom: 150px; }
 
 /* vue liste */
 .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
@@ -214,7 +226,7 @@ table.t tr.click { cursor: pointer; }
    Toutes les données restent sur l'appareil, chiffrées (AES-GCM) avec une clé
    protégée par le code du professeur (PBKDF2). Rien n'est envoyé sur internet.
    ========================================================= */
-const APP_VERSION = '2026-10-15.2';
+const APP_VERSION = '2026-10-15.3';
 const LS_KEYS = 'maclasse-cles', LS_DATA = 'maclasse-donnees', LS_TRY = 'maclasse-essais';
 const DAY = 864e5;
 const $ = (s, r = document) => r.querySelector(s);
@@ -425,7 +437,7 @@ function autoPlace(c, room, { amenFront, sep }) {
 }
 /** Taille d'une place en pixels, pour que la salle tienne dans l'écran (avec défilement sur petit écran) */
 function unitFor(W, side) { const avail = Math.min(document.documentElement.clientWidth, 1100) - 32 - (side ? 248 : 0); return Math.max(50, Math.min(96, Math.floor(avail / W))); }
-const vUnit = (u) => Math.round(u * 0.74);
+const vUnit = (u) => Math.max(48, Math.round(u * 0.74));
 /** Dessin de la salle ; seat(s, style) renvoie le HTML d'une place */
 function roomHTML(room, { u, seat, editTables = false, selT = null }) {
   const flip = S.settings.view === 'desk';
@@ -708,7 +720,7 @@ function renderLesson() {
   let h = bar(esc(c.name), () => go({ name: 'home' })) + `<main class="wrap wide${mode ? ' edit' : ''}">`;
   h += `<div class="subbar"><select id="l-room" aria-label="Salle">${S.rooms.map((r) => `<option value="${r.id}"${room && r.id === room.id ? ' selected' : ''}>🏫 ${esc(r.name)}</option>`).join('')}<option value=""${room ? '' : ' selected'}>☰ Liste (sans plan)</option></select>`;
   if (mode) h += `<div class="seg"><button class="${mode === 'eleves' ? 'on' : ''}" data-mode="eleves">👥 Placer les élèves</button><button class="${mode === 'tables' ? 'on' : ''}" data-mode="tables">🪑 Bouger les tables</button></div><button class="btn sm primary" id="l-done">✔ Terminé</button>`;
-  else h += `${room ? '<button class="btn sm" id="l-edit">✏️ Modifier le plan</button>' : ''}<button class="btn sm" id="l-suivi">📋 Suivi${(() => { const a = classAlerts(c); return a.neg || a.pos ? ` <span class="pill ${a.neg ? 'red' : 'green'}">${a.neg + a.pos}</span>` : ''; })()}</button><button class="btn sm" id="l-class" title="Élèves de la classe">👥</button>`;
+  else h += `${room ? '<button class="btn sm" id="l-edit">✏️ Modifier le plan</button>' : ''}<button class="btn sm" id="l-suivi">📋 Suivi${(() => { const a = classAlerts(c); return a.neg || a.pos ? ` <span class="pill ${a.neg ? 'red' : 'green'}">${a.neg + a.pos}</span>` : ''; })()}</button><button class="btn sm${view.multi ? ' primary' : ''}" id="l-multi" title="Noter plusieurs élèves à la fois">☑ Plusieurs</button><button class="btn sm" id="l-class" title="Élèves de la classe">👥</button>`;
   h += '</div>';
   if (mode === 'tables') {
     h += tablesEditorHTML(room) + '</main>';
@@ -746,6 +758,8 @@ function renderLesson() {
   bindLessonBar(c, room);
   app.onpointerdown = null;
   if (mode === 'eleves') return bindPlanEdit(c, room);
+  $('#l-multi')?.addEventListener('click', () => { view.multi = !view.multi; view.sel = []; render(); });
+  if (view.multi && c.students.length) return bindMulti(c);
   $$('[data-s]', app).forEach((el) => { el.onclick = () => openStudent(c, c.students.find((t) => t.id === el.dataset.s)); });
 }
 function bindLessonBar(c, room) {
@@ -765,12 +779,61 @@ function openStudent(c, stu) {
   const am = ''; // discrétion : rien n'indique les aménagements sur la feuille de saisie (les boutons non comptés sont seulement estompés)
   openSheet(`<div class="sheet-h"><div><b>${esc(stu.name)}</b>${am}<div class="small muted">Cette semaine : ${st.negCounted.length} / ${S.settings.neg} remarque${st.negCounted.length > 1 ? 's' : ''} · ${st.posCounted.length} / ${st.posTh} positif${st.posCounted.length > 1 ? 's' : ''}${st.graves.length ? ' · <b style="color:var(--red)">fait grave à saisir</b>' : ''}</div></div><button class="ib" id="sh-x" aria-label="Fermer">✕</button></div>
     <input type="text" class="note" id="sh-note" maxlength="160" placeholder="Précision (facultatif) : ce qui s'est passé, sans jugement">
-    ${KINDS.map(([k, t]) => { const ms = S.motifs.filter((m) => m.kind === k && !m.hidden); return ms.length ? `<h3>${t}</h3><div class="mbtns">${ms.map((m) => `<button class="mb mb-${k}${k === 'neg' && stu.amen && stu.amenM.includes(m.id) ? ' am' : ''}" data-m="${m.id}"><span>${m.icon}</span>${esc(m.label)}</button>`).join('')}</div>` : ''; }).join('')}
+    ${motifButtons(stu)}
     <div class="row"><button class="btn" id="sh-fiche">Voir sa fiche</button></div>`, (o) => {
     $('#sh-x', o).onclick = closeSheet;
     $('#sh-fiche', o).onclick = () => go({ name: 'eleve', c: c.id, s: stu.id, back: { ...view } });
     $$('.mb', o).forEach((b) => { b.onclick = () => record(c, stu, b.dataset.m, $('#sh-note', o).value.trim()); });
   });
+}
+/* ----- Noter plusieurs élèves à la fois ----- */
+function bindMulti(c) {
+  const sel = new Set(view.sel || []);
+  const bar = document.createElement('div'); bar.className = 'multibar';
+  bar.innerHTML = `<span><b id="mb-n"></b></span><button class="btn sm" id="mb-all">Tous</button><button class="btn sm" id="mb-none">Aucun</button><button class="btn sm primary" id="mb-go">Noter…</button><button class="btn sm" id="mb-x">Fermer</button>`;
+  $('main', app).appendChild(bar); $('main', app).classList.add('has-multibar');
+  const refresh = () => {
+    view.sel = [...sel];
+    $$('[data-s]', app).forEach((el) => el.classList.toggle('picked', sel.has(el.dataset.s)));
+    $('#mb-n').textContent = sel.size ? `${plural(sel.size, 'élève sélectionné', 'élèves sélectionnés')}` : 'Touche les élèves concernés';
+    $('#mb-go').disabled = !sel.size;
+  };
+  $$('[data-s]', app).forEach((el) => { el.onclick = () => { const id = el.dataset.s; if (sel.has(id)) sel.delete(id); else sel.add(id); refresh(); }; });
+  $('#mb-all').onclick = () => { c.students.forEach((t) => sel.add(t.id)); refresh(); };
+  $('#mb-none').onclick = () => { sel.clear(); refresh(); };
+  $('#mb-x').onclick = () => { view.multi = false; view.sel = []; render(); };
+  $('#mb-go').onclick = () => {
+    const studs = c.students.filter((t) => sel.has(t.id));
+    const names = studs.map((t) => t.name).sort((a, b) => a.localeCompare(b, 'fr'));
+    openSheet(`<div class="sheet-h"><div><b>${plural(studs.length, 'élève')}</b><div class="small muted">${esc(names.join(', '))}</div></div><button class="ib" id="sh-x" aria-label="Fermer">✕</button></div>
+      <input type="text" class="note" id="sh-note" maxlength="160" placeholder="Précision commune (facultatif)">
+      ${motifButtons()}`, (o) => {
+      $('#sh-x', o).onclick = closeSheet;
+      $$('.mb', o).forEach((b) => { b.onclick = () => { view.multi = false; view.sel = []; recordMany(c, studs, b.dataset.m, $('#sh-note', o).value.trim()); }; });
+    });
+  };
+  refresh();
+}
+function motifButtons(stu) {
+  return KINDS.map(([k, t]) => { const ms = S.motifs.filter((m) => m.kind === k && !m.hidden); return ms.length ? `<h3>${t}</h3><div class="mbtns">${ms.map((m) => `<button class="mb mb-${k}${k === 'neg' && stu && stu.amen && stu.amenM.includes(m.id) ? ' am' : ''}" data-m="${m.id}"><span>${m.icon}</span>${esc(m.label)}</button>`).join('')}</div>` : ''; }).join('');
+}
+function recordMany(c, studs, mid, note) {
+  if (studs.length === 1) return record(c, studs[0], mid, note);
+  const t = Date.now(), m = motif(mid), evs = [];
+  for (const stu of studs) { const e = { id: uid(), t, s: stu.id, c: c.id, m: mid }; if (note) e.n = note; evs.push(e); S.events.push(e); }
+  save();
+  const reached = [], notCounted = [];
+  for (const stu of studs) {
+    const st = status(stu), e = evs.find((x) => x.s === stu.id);
+    if (m.kind === 'neg' && isAmenEvent(stu, e)) notCounted.push(stu.name);
+    else if (m.kind === 'grave' || (m.kind === 'neg' && st.negCounted.length >= S.settings.neg) || (m.kind === 'pos' && st.posCounted.length === st.posTh)) reached.push(stu.name);
+  }
+  let msg = `${m.icon} ${m.label} · ${plural(studs.length, 'élève')}`;
+  if (notCounted.length) msg += ` (${notCounted.length} non compté${notCounted.length > 1 ? 's' : ''})`;
+  if (reached.length) msg += m.kind === 'pos' ? ` · encouragement à saisir : ${reached.join(', ')}` : ` · à saisir sur École Directe : ${reached.join(', ')}`;
+  closeSheet(); render();
+  const ids = new Set(evs.map((e) => e.id));
+  toast(msg, 'Annuler', () => { S.events = S.events.filter((x) => !ids.has(x.id)); save(); render(); toast('Annulé.'); }, 8000);
 }
 function record(c, stu, mid, note) {
   const e = { id: uid(), t: Date.now(), s: stu.id, c: c.id, m: mid }; if (note) e.n = note;
