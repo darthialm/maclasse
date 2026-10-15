@@ -3,7 +3,9 @@
 Outil pour tablette ou téléphone : en deux touches, tu notes une remarque ou un point positif. L'outil te dit quand un palier est atteint, et c'est toi qui fais la saisie sur École Directe.
 
 ## Ce que fait l'outil
-- **Classes et salles** : plusieurs salles (rangées, îlots, en U), un plan par classe et par salle. Pour changer quelqu'un de place, tu glisses son prénom, ou tu touches un élève puis une place. Il y a aussi un placement automatique : élèves avec aménagements devant, élèves à séparer.
+- **Salles libres** : tu pars d'un modèle (rangées, îlots, en U, ou salle vide), puis tu fais glisser chaque table et le bureau où tu veux. Touche une table pour changer son nombre de places, la tourner, la dupliquer ou la supprimer. Deux tables ne peuvent pas se chevaucher.
+- **Placer les élèves** : ✏️ Modifier le plan → « Placer les élèves ». La liste des élèves est à côté du plan : glisse un prénom sur une place, d'une place à une autre pour échanger deux élèves, ou dans la liste pour le retirer. Le placement automatique met les élèves avec aménagements devant et sépare ceux qu'il faut séparer.
+- **Bouger les tables depuis le cours** : ✏️ → « Bouger les tables ». Les élèves suivent leur table. Une salle sert à toutes tes classes, et chaque classe a son propre plan dans chaque salle.
 - **Saisie** : tu touches un élève, puis un motif (remarques, positifs, faits graves), avec une précision facultative. Le bouton « Annuler » rattrape une erreur.
 - **Paliers** (modifiables dans ⚙️) :
   - 3 remarques dans la semaine, ou un fait grave : **observation à saisir sur École Directe**. Remise à zéro le lundi.
@@ -21,7 +23,7 @@ Outil pour tablette ou téléphone : en deux touches, tu notes une remarque ou u
 - **Fin d'année** : 🔐 → « Effacer toutes les remarques ».
 
 ## Mettre en ligne (GitHub Pages)
-1. Dans ton dépôt GitHub, crée un dossier `maclasse`. Dans « Add file » → « Upload files », glisse **tous les fichiers** : `index.html`, `sw.js`, `manifest.webmanifest`, `icon.svg`, `icon-192.png`, `icon-512.png`.
+1. Dans ton dépôt GitHub, crée un dossier `maclasse` (ou remplace les fichiers s'il existe déjà). Dans « Add file » → « Upload files », glisse **tous les fichiers** : `index.html`, `sw.js`, `manifest.webmanifest`, `icon.svg`, `icon-192.png`, `icon-512.png`.
 2. Ouvre l'adresse de ton site suivie de `/maclasse/` sur la tablette.
 3. Ajoute l'outil à l'écran d'accueil : bouton Partager → « Sur l'écran d'accueil » sur iPad, menu → « Ajouter à l'écran d'accueil » sur Android. Il marche ensuite sans internet.
 

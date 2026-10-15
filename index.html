@@ -85,7 +85,31 @@ label.f > span { display: block; font-weight: 600; margin-bottom: 4px; }
 .unplaced { margin: 12px 0; padding: 10px; border-radius: 12px; background: var(--soft); min-height: 52px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { border: 1.5px solid var(--line); background: var(--card); border-radius: 99px; padding: 5px 12px; font-weight: 600; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.edit .side .chip { width: 100%; justify-content: flex-start; touch-action: pan-y; }
 .ghost { position: fixed; z-index: 100; pointer-events: none; transform: translate(-50%, -60%); background: var(--blue); color: #fff; border-radius: 99px; padding: 6px 14px; font-weight: 700; box-shadow: 0 6px 16px rgba(0,0,0,.25); }
+
+/* salle libre */
+.wrap.wide { max-width: 1140px; }
+.room { position: relative; margin: 0 auto; }
+.edit .room, .room.et, .edit .side { -webkit-user-select: none; user-select: none; }
+.tbl.bad, .desk.bad { box-shadow: 0 0 0 3px var(--red) !important; }
+.board2 { position: absolute; left: 0; right: 0; height: 24px; line-height: 24px; background: var(--soft); border-radius: 8px; text-align: center; font-size: .78rem; font-weight: 700; color: var(--muted); letter-spacing: .05em; }
+.desk { position: absolute; background: #e6dfcc; border: 1.5px solid #cfc4a6; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: .78rem; font-weight: 700; color: #75694c; }
+.tbl { position: absolute; background: #efe8d6; border-radius: 10px; box-shadow: inset 0 0 0 1.5px #ddd2b6; }
+.tbl .seat { position: absolute; padding: 4px; }
+.tbl .seat-in { border-color: #cdbf9c; background: rgba(255,255,255,.45); }
+.room.et .tbl, .room.et .desk { cursor: grab; touch-action: none; user-select: none; }
+.room.et .tbl.sel { box-shadow: inset 0 0 0 3px var(--blue); background: #e6edf9; }
+.tbl.drag, .desk.drag { opacity: .9; z-index: 5; box-shadow: 0 10px 22px rgba(0,0,0,.22); cursor: grabbing; }
+.tb { position: sticky; top: 60px; z-index: 15; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--bg); padding: 8px 0; }
+.seg { display: inline-flex; border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden; }
+.seg button { border: 0; background: var(--card); padding: 6px 12px; font-weight: 650; cursor: pointer; font-size: .9rem; }
+.seg button.on { background: var(--accent); color: var(--accent-ink); }
+.pe-grid { display: grid; grid-template-columns: minmax(0, 1fr) 232px; gap: 12px; align-items: start; }
+.side { position: sticky; top: 70px; max-height: calc(100vh - 86px); overflow: auto; background: var(--soft); border-radius: 12px; padding: 10px; }
+.side h3 { margin-top: 0; }
+.side .chips { flex-direction: column; flex-wrap: nowrap; }
+.side-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 
 /* vue liste */
 .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
@@ -110,7 +134,8 @@ label.f > span { display: block; font-weight: 600; margin-bottom: 4px; }
 
 /* toast */
 #toast { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 90; background: #1f2a24; color: #fff; border-radius: 14px; padding: 10px 14px; display: flex; gap: 12px; align-items: center; max-width: calc(100% - 24px); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
-#toast button { border: 0; background: #fff; color: #1f2a24; border-radius: 10px; padding: 6px 12px; font-weight: 800; cursor: pointer; }
+#toast { pointer-events: none; }
+#toast button { pointer-events: auto; border: 0; background: #fff; color: #1f2a24; border-radius: 10px; padding: 6px 12px; font-weight: 800; cursor: pointer; }
 #toast[hidden] { display: none; }
 
 /* suivi */
@@ -164,6 +189,12 @@ table.t tr.click { cursor: pointer; }
 .paper td, .paper th { border: 1px solid #ccc; padding: 5px 8px; text-align: left; vertical-align: top; }
 .paper th { background: #f2f2f2; }
 .paper .pf { margin-top: 18px; font-size: .82rem; color: #555; }
+@media (max-width: 759px) {
+  .pe-grid { grid-template-columns: minmax(0, 1fr); }
+  .side { position: sticky; top: auto; bottom: 0; max-height: none; z-index: 16; box-shadow: 0 -4px 14px rgba(0,0,0,.1); }
+  .side .chips { flex-direction: row; overflow-x: auto; padding-bottom: 4px; }
+  .edit .side .chip { width: auto; flex: 0 0 auto; touch-action: pan-x; }
+}
 @media print {
   body { background: #fff; }
   .bar, .noprint, #toast { display: none !important; }
@@ -183,7 +214,7 @@ table.t tr.click { cursor: pointer; }
    Toutes les données restent sur l'appareil, chiffrées (AES-GCM) avec une clé
    protégée par le code du professeur (PBKDF2). Rien n'est envoyé sur internet.
    ========================================================= */
-const APP_VERSION = '2026-10-15.1';
+const APP_VERSION = '2026-10-15.2';
 const LS_KEYS = 'maclasse-cles', LS_DATA = 'maclasse-donnees', LS_TRY = 'maclasse-essais';
 const DAY = 864e5;
 const $ = (s, r = document) => r.querySelector(s);
@@ -284,6 +315,7 @@ function migrate(s) {
   const d = defaultState();
   for (const k of Object.keys(d)) if (s[k] === undefined) s[k] = d[k];
   s.settings = { ...d.settings, ...s.settings };
+  for (const r of s.rooms) migrateRoom(r, s.plans);
   for (const c of s.classes) { c.sep = c.sep || []; for (const t of c.students) { t.amenM = t.amenM || []; } }
 }
 const cls = (id) => S.classes.find((c) => c.id === id);
@@ -310,24 +342,59 @@ function status(stu, now = Date.now()) {
 }
 function classAlerts(c) { let neg = 0, pos = 0; for (const t of c.students) { const s = status(t); if (s.negAlert) neg++; if (s.posAlert) pos++; } return { neg, pos }; }
 
-/* ---------- Salles ---------- */
-const ROOM_TYPES = { rows: 'Rangées', islands: 'Îlots', u: 'En U' };
-const ROOM_DEF = { rows: { rows: 5, tables: 3, places: 2 }, islands: { islands: 6, size: 4, perRow: 3 }, u: { left: 6, back: 8, right: 6 } };
-function roomSeats(room) {
-  const p = room.p, seats = [];
-  if (room.type === 'rows') {
-    for (let r = 0; r < p.rows; r++) for (let t = 0; t < p.tables; t++) for (let k = 0; k < p.places; k++) seats.push({ id: `r${r}t${t}p${k}`, x: t * (p.places + 0.6) + k, y: r * 1.35, g: `r${r}t${t}` });
-  } else if (room.type === 'islands') {
-    const h = Math.ceil(p.size / 2);
-    for (let i = 0; i < p.islands; i++) { const cx = (i % p.perRow) * 2.8, cy = Math.floor(i / p.perRow) * (h + 0.7); for (let k = 0; k < p.size; k++) seats.push({ id: `i${i}p${k}`, x: cx + (k % 2), y: cy + Math.floor(k / 2), g: `i${i}` }); }
-  } else {
-    const H = Math.max(p.left, p.right);
-    for (let k = 0; k < p.left; k++) seats.push({ id: `uL${k}`, x: 0, y: k, g: 'uL' + Math.floor(k / 2) });
-    for (let k = 0; k < p.back; k++) seats.push({ id: `uB${k}`, x: 1.4 + k, y: H + 0.3, g: 'uB' + Math.floor(k / 2) });
-    for (let k = 0; k < p.right; k++) seats.push({ id: `uR${k}`, x: p.back + 1.8, y: k, g: 'uR' + Math.floor(k / 2) });
-  }
-  return seats;
+/* ---------- Salles : des tables posées librement ----------
+   Une salle = des tables (1 unité = 1 place), un bureau ; le tableau est en haut.
+   Les places d'une table s'appellent « idTable:numéro » : les élèves suivent leur table quand on la déplace. */
+const TEMPLATES = {
+  rows: { label: 'Rangées', fields: [['rows', 'Rangées', 1, 12, 5], ['tables', 'Tables par rangée', 1, 8, 3], ['places', 'Places par table', 1, 4, 2]],
+    make: (p) => { const T = []; for (let r = 0; r < p.rows; r++) for (let t = 0; t < p.tables; t++) T.push({ id: `r${r}t${t}`, x: 0.5 + t * (p.places + 1), y: 2 + r * 1.5, n: p.places, cols: p.places, rot: 0 }); return T; } },
+  islands: { label: 'Îlots', fields: [['islands', 'Îlots', 1, 12, 6], ['size', 'Places par îlot', 2, 8, 4], ['perRow', 'Îlots par ligne', 1, 6, 3]],
+    make: (p) => { const T = [], h = Math.ceil(p.size / 2); for (let i = 0; i < p.islands; i++) T.push({ id: `i${i}`, x: 0.5 + (i % p.perRow) * 3.5, y: 2 + Math.floor(i / p.perRow) * (h + 1.2), n: p.size, cols: 2, rot: 0 }); return T; } },
+  u: { label: 'En U', fields: [['left', 'Places côté gauche', 0, 16, 6], ['back', 'Places au fond', 0, 20, 8], ['right', 'Places côté droit', 0, 16, 6]],
+    make: (p) => {
+      const T = [], half = (n) => Math.ceil(n / 2), L = half(p.left), R = half(p.right), B = half(p.back), Hs = Math.max(L, R) * 2;
+      for (let i = 0; i < L; i++) T.push({ id: `uL${i}`, x: 0.5, y: 2 + i * 2, n: Math.min(2, p.left - 2 * i), cols: 2, rot: 1 });
+      for (let i = 0; i < B; i++) T.push({ id: `uB${i}`, x: 2 + i * 2, y: 2.5 + Hs, n: Math.min(2, p.back - 2 * i), cols: 2, rot: 0 });
+      for (let i = 0; i < R; i++) T.push({ id: `uR${i}`, x: 2.5 + B * 2, y: 2 + i * 2, n: Math.min(2, p.right - 2 * i), cols: 2, rot: 1 });
+      return T;
+    } },
+  empty: { label: 'Salle vide', fields: [], make: () => [] },
+};
+const tplDefaults = (k) => Object.fromEntries(TEMPLATES[k].fields.map((f) => [f[0], f[4]]));
+function tableDims(t) { const cols = Math.max(1, Math.min(t.cols, t.n)), rows = Math.ceil(t.n / cols); return t.rot ? { w: rows, h: cols, cols, rows } : { w: cols, h: rows, cols, rows }; }
+function tableSeats(t) {
+  const d = tableDims(t), out = [];
+  for (let k = 0; k < t.n; k++) { const c = k % d.cols, r = Math.floor(k / d.cols), rx = t.rot ? r : c, ry = t.rot ? c : r; out.push({ id: `${t.id}:${k}`, x: t.x + rx, y: t.y + ry, rx, ry, g: t.id }); }
+  return out;
 }
+const roomSeats = (room) => room.tables.flatMap(tableSeats);
+function roomBox(room) {
+  let W = 8, H = 5;
+  for (const t of room.tables) { const d = tableDims(t); W = Math.max(W, t.x + d.w + 0.5); H = Math.max(H, t.y + d.h + 0.5); }
+  if (room.desk) { W = Math.max(W, room.desk.x + 2.5); H = Math.max(H, room.desk.y + 1.5); }
+  return { W: Math.ceil(W * 2) / 2, H: Math.ceil(H * 2) / 2 };
+}
+function newRoom(name, tpl, p) {
+  const r = { id: uid(), name, tables: TEMPLATES[tpl].make(p), desk: null };
+  r.desk = { x: Math.max(0, Math.round(roomBox(r).W / 2 - 1)), y: 0.3 };
+  return r;
+}
+function migrateRoom(r, plans) {
+  if (r.tables) return;
+  const tpl = r.type === 'islands' ? 'islands' : r.type === 'u' ? 'u' : 'rows';
+  r.tables = TEMPLATES[tpl].make({ ...tplDefaults(tpl), ...(r.p || {}) });
+  r.desk = { x: Math.max(0, Math.round(roomBox(r).W / 2 - 1)), y: 0.3 };
+  for (const k of Object.keys(plans)) if (k.endsWith('|' + r.id)) {
+    const nw = {};
+    for (const [seat, sid] of Object.entries(plans[k])) { const m = seat.match(/^(r\d+t\d+|i\d+)p(\d+)$/); if (m) nw[`${m[1]}:${m[2]}`] = sid; }
+    plans[k] = nw;
+  }
+  delete r.type; delete r.p;
+}
+const tRect = (t) => { const d = tableDims(t); return { x: t.x, y: t.y, w: d.w, h: d.h }; };
+const hit = (a, b) => a.x < b.x + b.w - 0.01 && b.x < a.x + a.w - 0.01 && a.y < b.y + b.h - 0.01 && b.y < a.y + a.h - 0.01;
+function overlapsAny(room, r, except) { return room.tables.some((t) => t.id !== except && hit(r, tRect(t))) || (!!room.desk && except !== 'desk' && hit(r, { x: room.desk.x, y: room.desk.y, w: 2, h: 1 })); }
+function freeSpot(room, w, h) { const { W, H } = roomBox(room); for (let y = 2; y <= H; y += 0.5) for (let x = 0.5; x + w <= W; x += 0.5) if (!overlapsAny(room, { x, y, w, h })) return { x, y }; return { x: 0.5, y: H }; }
 const adjacent = (a, b) => a.g === b.g || Math.hypot(a.x - b.x, a.y - b.y) < 1.1;
 const planKey = (c, r) => c.id + '|' + r.id;
 function seatOf(plan, sid) { return Object.keys(plan).find((k) => plan[k] === sid); }
@@ -340,24 +407,123 @@ function placeStudent(plan, sid, seatId) {
 }
 function autoPlace(c, room, { amenFront, sep }) {
   const seats = roomSeats(room);
-  const W = Math.max(...seats.map((s) => s.x));
-  const front = seats.slice().sort((a, b) => a.y - b.y || Math.abs(a.x - W / 2) - Math.abs(b.x - W / 2));
-  let best = null, bestBad = Infinity;
+  const desk = room.desk ? room.desk.x + 1 : roomBox(room).W / 2;
+  const front = seats.slice().sort((a, b) => a.y - b.y || Math.abs(a.x + 0.5 - desk) - Math.abs(b.x + 0.5 - desk));
+  let best = {}, bestBad = Infinity;
   for (let tries = 0; tries < 400 && bestBad > 0; tries++) {
     const studs = shuffle(c.students.slice());
     const first = amenFront ? studs.filter((t) => t.amen) : [];
-    const rest = studs.filter((t) => !first.includes(t));
-    const order = [...first, ...rest];
-    const plan = {}; const pos = {};
-    // les élèves avec aménagements devant, puis les autres en remplissant de l'avant vers l'arrière
-    const free = front.slice();
-    order.forEach((t, i) => { if (i < free.length) { plan[free[i].id] = t.id; pos[t.id] = free[i]; } });
+    const order = [...first, ...studs.filter((t) => !first.includes(t))];
+    const plan = {}, pos = {};
+    order.forEach((t, i) => { if (i < front.length) { plan[front[i].id] = t.id; pos[t.id] = front[i]; } });
     let bad = 0;
     if (sep) for (const [a, b] of c.sep) if (pos[a] && pos[b] && adjacent(pos[a], pos[b])) bad++;
     if (bad < bestBad) { bestBad = bad; best = plan; }
     if (!sep || !c.sep.length) break;
   }
   return { plan: best, bad: bestBad, missing: Math.max(0, c.students.length - seats.length) };
+}
+/** Taille d'une place en pixels, pour que la salle tienne dans l'écran (avec défilement sur petit écran) */
+function unitFor(W, side) { const avail = Math.min(document.documentElement.clientWidth, 1100) - 32 - (side ? 248 : 0); return Math.max(50, Math.min(96, Math.floor(avail / W))); }
+const vUnit = (u) => Math.round(u * 0.74);
+/** Dessin de la salle ; seat(s, style) renvoie le HTML d'une place */
+function roomHTML(room, { u, seat, editTables = false, selT = null }) {
+  const flip = S.settings.view === 'desk';
+  const { W, H } = roomBox(room), v = vUnit(u), off = 30;
+  const X = (x, w) => (flip ? W - x - w : x) * u, Y = (y, h) => (flip ? H - y - h : y) * v + (flip ? 0 : off);
+  let h = `<div class="room${editTables ? ' et' : ''}" style="width:${W * u}px;height:${H * v + off}px"><div class="board2" style="${flip ? 'bottom' : 'top'}:0">${flip ? '▼' : '▲'} Tableau ${flip ? '▼' : '▲'}</div>`;
+  if (room.desk) h += `<div class="desk" id="desk" style="left:${X(room.desk.x, 2)}px;top:${Y(room.desk.y, 1)}px;width:${2 * u}px;height:${v}px">Bureau</div>`;
+  for (const t of room.tables) {
+    const d = tableDims(t);
+    h += `<div class="tbl${selT === t.id ? ' sel' : ''}" data-t="${t.id}" style="left:${X(t.x, d.w)}px;top:${Y(t.y, d.h)}px;width:${d.w * u}px;height:${d.h * v}px">`;
+    for (const s of tableSeats(t)) { const rx = flip ? d.w - 1 - s.rx : s.rx, ry = flip ? d.h - 1 - s.ry : s.ry; h += seat(s, `left:${rx * u}px;top:${ry * v}px;width:${u}px;height:${v}px`); }
+    h += '</div>';
+  }
+  return h + '</div>';
+}
+
+/* ---------- Éditeur de salle (tables et bureau) ---------- */
+function tablesEditorHTML(room) {
+  const t = room.tables.find((x) => x.id === view.selT);
+  const line = t && t.cols >= t.n;
+  const tb = t
+    ? `<div class="tb"><b class="small">Table sélectionnée :</b><button class="btn sm" data-tb="minus" aria-label="Une place de moins">−</button><b>${plural(t.n, 'place')}</b><button class="btn sm" data-tb="plus" aria-label="Une place de plus">＋</button><button class="btn sm" data-tb="rot">↻ Tourner</button>${t.n > 2 ? `<button class="btn sm" data-tb="cols">${line ? '▦ Sur 2 rangs' : '▬ En ligne'}</button>` : ''}<button class="btn sm" data-tb="dup">⧉ Dupliquer</button><button class="btn sm danger" data-tb="del">🗑 Supprimer</button><button class="btn sm" data-tb="close">OK</button></div>`
+    : `<div class="tb"><span class="small muted">Ajouter :</span>${[[1, '1 place'], [2, 'Table de 2'], [3, 'Table de 3'], [4, 'Îlot de 4'], [6, 'Îlot de 6']].map(([n, l]) => `<button class="btn sm" data-add="${n}">＋ ${l}</button>`).join('')}<button class="btn sm" id="tb-tpl">📐 Partir d'un modèle…</button></div>`;
+  const u = unitFor(roomBox(room).W, false);
+  return tb + `<p class="small muted">Fais glisser les tables et le bureau où tu veux. Touche une table pour changer son nombre de places, la tourner, la dupliquer ou la supprimer.</p>
+    <div class="plan-scroll">${roomHTML(room, { u, editTables: true, selT: view.selT, seat: (s, st) => `<div class="seat" style="${st}"><div class="seat-in"></div></div>` })}</div>
+    <p class="small muted">${plural(roomSeats(room).length, 'place')} · Cette salle sert à toutes tes classes : si tu déplaces une table, les élèves assis dessus la suivent.</p>`;
+}
+function dropRoomSeats(room, keep) {
+  for (const k of Object.keys(S.plans)) if (k.endsWith('|' + room.id)) for (const sid of Object.keys(S.plans[k])) if (!keep.has(sid)) delete S.plans[k][sid];
+}
+function bindTablesEditor(room) {
+  const flip = S.settings.view === 'desk', u = unitFor(roomBox(room).W, false), v = vUnit(u);
+  const snap = (x) => Math.max(0, Math.round(x * 2) / 2);
+  const here = view.name;
+  app.onpointerdown = (e) => {
+    if (view.name !== here) { app.onpointerdown = null; return; }
+    const el = e.target.closest('.room.et [data-t], .room.et #desk'); if (!el) return;
+    const obj = el.id === 'desk' ? room.desk : room.tables.find((t) => t.id === el.dataset.t); if (!obj) return;
+    const oid = el.id === 'desk' ? 'desk' : obj.id, dims = el.id === 'desk' ? { w: 2, h: 1 } : tableDims(obj);
+    const sx = e.clientX, sy = e.clientY, ox = obj.x, oy = obj.y, l0 = parseFloat(el.style.left), t0 = parseFloat(el.style.top), k = flip ? -1 : 1;
+    let moved = false, nx = ox, ny = oy;
+    const mv = (ev) => {
+      const dx = ev.clientX - sx, dy = ev.clientY - sy;
+      if (!moved && Math.hypot(dx, dy) > 6) { moved = true; el.classList.add('drag'); }
+      if (!moved) return;
+      ev.preventDefault();
+      nx = snap(ox + k * dx / u); ny = snap(oy + k * dy / v);
+      el.style.left = (l0 + k * (nx - ox) * u) + 'px'; el.style.top = (t0 + k * (ny - oy) * v) + 'px';
+      el.classList.toggle('bad', overlapsAny(room, { x: nx, y: ny, w: dims.w, h: dims.h }, oid));
+    };
+    const up = () => {
+      document.removeEventListener('pointermove', mv); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', up);
+      if (moved) {
+        if (overlapsAny(room, { x: nx, y: ny, w: dims.w, h: dims.h }, oid)) { toast('Il y a déjà une table à cet endroit.'); render(); return; }
+        obj.x = nx; obj.y = ny; save(); render();
+      }
+      else if (el.dataset.t) { view.selT = view.selT === el.dataset.t ? null : el.dataset.t; render(); }
+    };
+    document.addEventListener('pointermove', mv, { passive: false }); document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
+  };
+  const t = room.tables.find((x) => x.id === view.selT);
+  $$('[data-tb]').forEach((b) => { b.onclick = () => {
+    const a = b.dataset.tb, line = t.cols >= t.n;
+    if (a === 'minus' && t.n > 1) { t.n--; if (line) t.cols = t.n; }
+    else if (a === 'plus' && t.n < 8) { t.n++; if (line) t.cols = t.n; }
+    else if (a === 'rot') t.rot = t.rot ? 0 : 1;
+    else if (a === 'cols') t.cols = line ? 2 : t.n;
+    else if (a === 'dup') { const d = tableDims(t); const n = { ...t, id: uid(), ...freeSpot(room, d.w, d.h) }; room.tables.push(n); view.selT = n.id; }
+    else if (a === 'del') { room.tables = room.tables.filter((x) => x !== t); view.selT = null; }
+    else if (a === 'close') view.selT = null;
+    dropRoomSeats(room, new Set(roomSeats(room).map((s) => s.id)));
+    save(); render();
+    const cur = room.tables.find((x) => x.id === view.selT);
+    if (cur && ['plus', 'rot', 'cols'].includes(a) && overlapsAny(room, tRect(cur), cur.id)) toast('Attention : cette table touche une autre table. Fais-la glisser un peu.');
+  }; });
+  $$('[data-add]').forEach((b) => { b.onclick = () => {
+    const n = Number(b.dataset.add), cols = n <= 3 ? n : 2;
+    const nt = { id: uid(), n, cols, rot: 0, ...freeSpot(room, cols, Math.ceil(n / cols)) };
+    room.tables.push(nt); view.selT = nt.id; save(); render();
+    toast('Table ajoutée (en bleu) : fais-la glisser à sa place.');
+  }; });
+  $('#tb-tpl')?.addEventListener('click', () => {
+    let tpl = 'rows';
+    const form = () => `<div class="row">${Object.entries(TEMPLATES).map(([k, x]) => `<label class="chip"><input type="radio" name="tp" value="${k}"${k === tpl ? ' checked' : ''}> ${x.label}</label>`).join('')}</div>
+      <div class="row">${TEMPLATES[tpl].fields.map(([k, l, mi, ma, d]) => `<label>${l} <input type="number" data-f="${k}" min="${mi}" max="${ma}" value="${d}"></label>`).join('')}</div>`;
+    openSheet(`<div class="sheet-h"><div><b>Partir d'un modèle</b><div class="small muted">Remplace toutes les tables de ${esc(room.name)}. Tu pourras ensuite les déplacer une par une.</div></div><button class="ib" id="tp-x">✕</button></div><div id="tp-f">${form()}</div><div class="row"><button class="btn primary" id="tp-go">Remplacer les tables</button></div>`, (o) => {
+      $('#tp-x', o).onclick = closeSheet;
+      const bindF = () => $$('input[name=tp]', o).forEach((r) => { r.onchange = () => { tpl = r.value; $('#tp-f', o).innerHTML = form(); bindF(); }; });
+      bindF();
+      $('#tp-go', o).onclick = () => {
+        const p = { ...tplDefaults(tpl) }; $$('[data-f]', o).forEach((i) => { p[i.dataset.f] = Math.max(Number(i.min), Math.min(Number(i.max), Math.round(Number(i.value) || 0))); });
+        room.tables = TEMPLATES[tpl].make(p); view.selT = null;
+        dropRoomSeats(room, new Set(roomSeats(room).map((s) => s.id)));
+        closeSheet(); save(); render();
+      };
+    });
+  });
 }
 
 /* ---------- Petits composants ---------- */
@@ -537,35 +703,38 @@ function renderLesson() {
   const c = cls(view.c); if (!c) return go({ name: 'home' });
   const room = S.rooms.find((r) => r.id === view.r) || null;
   if (room && c.lastRoom !== room.id) { c.lastRoom = room.id; save(); }
-  const edit = !!view.edit && room;
+  const mode = room ? (view.edit || '') : ''; // '' | 'eleves' | 'tables'
   const st = {}; for (const t of c.students) st[t.id] = status(t);
-  let h = bar(esc(c.name), () => go({ name: 'home' })) + `<main class="wrap${edit ? ' edit' : ''}">`;
-  h += `<div class="subbar"><select id="l-room" aria-label="Salle">${S.rooms.map((r) => `<option value="${r.id}"${room && r.id === room.id ? ' selected' : ''}>🏫 ${esc(r.name)}</option>`).join('')}<option value=""${room ? '' : ' selected'}>☰ Liste (sans plan)</option></select>
-    ${room ? `<button class="btn sm" id="l-edit">${edit ? '✔ Terminé' : '✏️ Plan'}</button>` : ''}
-    ${edit ? '' : `<button class="btn sm" id="l-suivi">📋 Suivi${(() => { const a = classAlerts(c); return a.neg || a.pos ? ` <span class="pill ${a.neg ? 'red' : 'green'}">${a.neg + a.pos}</span>` : ''; })()}</button><button class="btn sm" id="l-class">👥</button>`}</div>`;
+  let h = bar(esc(c.name), () => go({ name: 'home' })) + `<main class="wrap wide${mode ? ' edit' : ''}">`;
+  h += `<div class="subbar"><select id="l-room" aria-label="Salle">${S.rooms.map((r) => `<option value="${r.id}"${room && r.id === room.id ? ' selected' : ''}>🏫 ${esc(r.name)}</option>`).join('')}<option value=""${room ? '' : ' selected'}>☰ Liste (sans plan)</option></select>`;
+  if (mode) h += `<div class="seg"><button class="${mode === 'eleves' ? 'on' : ''}" data-mode="eleves">👥 Placer les élèves</button><button class="${mode === 'tables' ? 'on' : ''}" data-mode="tables">🪑 Bouger les tables</button></div><button class="btn sm primary" id="l-done">✔ Terminé</button>`;
+  else h += `${room ? '<button class="btn sm" id="l-edit">✏️ Modifier le plan</button>' : ''}<button class="btn sm" id="l-suivi">📋 Suivi${(() => { const a = classAlerts(c); return a.neg || a.pos ? ` <span class="pill ${a.neg ? 'red' : 'green'}">${a.neg + a.pos}</span>` : ''; })()}</button><button class="btn sm" id="l-class" title="Élèves de la classe">👥</button>`;
+  h += '</div>';
+  if (mode === 'tables') {
+    h += tablesEditorHTML(room) + '</main>';
+    mount(h, () => go({ name: 'home' }));
+    bindLessonBar(c, room);
+    return bindTablesEditor(room);
+  }
   if (!c.students.length) h += `<div class="empty">Cette classe n'a pas encore d'élèves. <button class="btn sm" id="l-add">Ajouter les prénoms</button></div>`;
   else if (room) {
-    const plan = S.plans[planKey(c, room)] || {};
-    const seats = roomSeats(room);
-    const okSeat = new Set(seats.map((s) => s.id)), okStu = new Set(c.students.map((t) => t.id));
+    const key = planKey(c, room), plan = S.plans[key] || {};
+    const okSeat = new Set(roomSeats(room).map((s) => s.id)), okStu = new Set(c.students.map((t) => t.id));
     for (const k of Object.keys(plan)) if (!okSeat.has(k) || !okStu.has(plan[k])) { delete plan[k]; save(); }
-    const W = Math.max(...seats.map((s) => s.x)) + 1, H = Math.max(...seats.map((s) => s.y)) + 1;
-    const flip = S.settings.view === 'desk';
-    const board = `<div class="board">${flip ? '▼ Tableau / bureau ▼' : '▲ Tableau / bureau ▲'}</div>`;
-    const cells = seats.map((s) => {
-      const x = flip ? W - 1 - s.x : s.x, y = flip ? H - 1 - s.y : s.y;
-      const t = plan[s.id] && c.students.find((u) => u.id === plan[s.id]);
-      return `<div class="seat${t ? ' occ ' + alertCls(st[t.id]) : ''}" data-seat="${s.id}"${t ? ` data-s="${t.id}"` : ''} style="left:${(x / W * 100).toFixed(3)}%;top:${(y / H * 100).toFixed(3)}%;width:${(100 / W).toFixed(3)}%;height:${(100 / H).toFixed(3)}%"><div class="seat-in">${t ? `<span class="nm">${esc(t.name)}</span><span class="bd">${edit ? '' : badges(st[t.id])}</span>` : ''}</div></div>`;
-    });
-    h += `<div class="plan-scroll" id="plan-area"><div class="plan-wrap" style="width:max(100%, ${Math.round(W * 52)}px)">${flip ? '' : board}<div class="plan" style="height:${Math.round(H * 60)}px">${cells.join('')}</div>${flip ? board : ''}</div></div>`;
+    const byId = Object.fromEntries(c.students.map((t) => [t.id, t]));
+    const edit = mode === 'eleves';
+    const u = unitFor(roomBox(room).W, edit);
+    const seatFn = (s, style) => { const t = byId[plan[s.id]]; return `<div class="seat${t ? ' occ ' + (edit ? '' : alertCls(st[t.id])) : ''}" data-seat="${s.id}"${t ? ` data-s="${t.id}"` : ''} style="${style}"><div class="seat-in">${t ? `<span class="nm">${esc(t.name)}</span>${edit ? '' : `<span class="bd">${badges(st[t.id])}</span>`}` : ''}</div></div>`; };
+    const roomH = `<div class="plan-scroll">${roomHTML(room, { u, seat: seatFn })}</div>`;
     const placed = new Set(Object.values(plan));
     const un = c.students.filter((t) => !placed.has(t.id)).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
     if (edit) {
-      h += `<div class="unplaced" id="unplaced"><h3>Pas encore placés${un.length ? ` (${un.length})` : ''}</h3><div class="chips">${un.map((t) => `<button class="chip" data-s="${t.id}" data-chip="1">${esc(t.name)}</button>`).join('') || '<span class="muted small">Tout le monde est placé. Glisse un élève ici pour le retirer du plan.</span>'}</div></div>
-        <p class="small muted">Glisse un prénom sur une place, ou touche un élève puis une place. Deux élèves échangent leurs places.</p>
-        <div class="row"><button class="btn" id="pe-auto">🎲 Placement automatique</button><button class="btn danger" id="pe-clear">Vider le plan</button></div>`;
-    } else if (un.length) {
-      h += `<div class="unplaced"><h3>Pas placés sur le plan</h3><div class="chips">${un.map((t) => `<button class="chip" data-s="${t.id}">${esc(t.name)} <span class="bd">${badges(st[t.id])}</span></button>`).join('')}</div></div>`;
+      h += `<div class="pe-grid">${roomH}<aside class="side" id="unplaced"><h3>À placer (${un.length})</h3><div class="chips">${un.map((t) => `<button class="chip" data-s="${t.id}" data-chip="1">${esc(t.name)}</button>`).join('') || '<span class="muted small">Tout le monde est placé. Glisse un élève ici pour le retirer du plan.</span>'}</div>
+        <div class="side-acts"><button class="btn sm" id="pe-auto">🎲 Placement auto</button><button class="btn sm danger" id="pe-clear">Vider</button></div></aside></div>
+        <p class="small muted">Fais glisser un prénom de la liste vers une place, ou d'une place à une autre (deux élèves échangent leurs places). Pour retirer un élève du plan, glisse-le dans la liste. Tu peux aussi toucher un élève, puis une place.</p>`;
+    } else {
+      h += roomH;
+      if (un.length) h += `<div class="unplaced"><h3>Pas placés sur le plan</h3><div class="chips">${un.map((t) => `<button class="chip" data-s="${t.id}">${esc(t.name)} <span class="bd">${badges(st[t.id])}</span></button>`).join('')}</div></div>`;
     }
   } else {
     if (!S.rooms.length) h += '<div class="banner info">Crée ta salle pour avoir le plan de classe. <button class="btn sm" id="l-newroom">Créer une salle</button></div>';
@@ -574,15 +743,20 @@ function renderLesson() {
   }
   h += '</main>';
   mount(h, () => go({ name: 'home' }));
-  $('#l-room').onchange = (e) => go({ name: 'lesson', c: c.id, r: e.target.value });
-  $('#l-edit')?.addEventListener('click', () => { view.edit = !edit; render(); });
+  bindLessonBar(c, room);
+  app.onpointerdown = null;
+  if (mode === 'eleves') return bindPlanEdit(c, room);
+  $$('[data-s]', app).forEach((el) => { el.onclick = () => openStudent(c, c.students.find((t) => t.id === el.dataset.s)); });
+}
+function bindLessonBar(c, room) {
+  $('#l-room').onchange = (e) => go({ name: 'lesson', c: c.id, r: e.target.value, edit: view.edit && e.target.value ? view.edit : '' });
+  $('#l-edit')?.addEventListener('click', () => { view.edit = 'eleves'; render(); });
+  $('#l-done')?.addEventListener('click', () => { view.edit = ''; view.selT = null; render(); });
+  $$('[data-mode]').forEach((b) => { b.onclick = () => { view.edit = b.dataset.mode; view.selT = null; render(); }; });
   $('#l-suivi')?.addEventListener('click', () => go({ name: 'suivi', c: c.id }));
   $('#l-class')?.addEventListener('click', () => go({ name: 'classe', c: c.id }));
   $('#l-add')?.addEventListener('click', () => go({ name: 'classe', c: c.id }));
   $('#l-newroom')?.addEventListener('click', () => go({ name: 'salle', r: null, back: { name: 'lesson', c: c.id } }));
-  app.onpointerdown = null;
-  if (edit) return bindPlanEdit(c, room);
-  $$('[data-s]', app).forEach((el) => { el.onclick = () => openStudent(c, c.students.find((t) => t.id === el.dataset.s)); });
 }
 
 function openStudent(c, stu) {
@@ -636,10 +810,10 @@ function bindPlanEdit(c, room) {
   let drag = null;
   app.onpointerdown = onDown;
   function onDown(e) {
-    if (view.name !== 'lesson' || !view.edit) { app.onpointerdown = null; return; }
+    if (view.name !== 'lesson' || view.edit !== 'eleves') { app.onpointerdown = null; return; }
     const el = pick(e.target); if (!el) return;
     drag = { el, sid: el.dataset.s, x: e.clientX, y: e.clientY, moving: false, ghost: null };
-    document.addEventListener('pointermove', onMove); document.addEventListener('pointerup', onUp, { once: true });
+    document.addEventListener('pointermove', onMove, { passive: false }); document.addEventListener('pointerup', onUp, { once: true }); document.addEventListener('pointercancel', onCancel, { once: true });
   }
   function onMove(e) {
     if (!drag || !drag.sid) return;
@@ -651,8 +825,9 @@ function bindPlanEdit(c, room) {
     }
     if (drag.moving) { e.preventDefault(); drag.ghost.style.left = e.clientX + 'px'; drag.ghost.style.top = e.clientY + 'px'; }
   }
+  function onCancel() { document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); drag?.ghost?.remove(); drag = null; }
   function onUp(e) {
-    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointermove', onMove); document.removeEventListener('pointercancel', onCancel);
     if (!drag) return;
     const d = drag; drag = null;
     if (!d.moving) return tap(d.el);
@@ -849,50 +1024,46 @@ function renderClasse() {
 /* ----- Salles ----- */
 function renderSalles() {
   let h = bar('Mes salles', () => go({ name: 'home' })) + '<main class="wrap">';
-  h += S.rooms.length ? '<div class="cards">' + S.rooms.map((r) => `<button class="card" data-r="${r.id}"><b>${esc(r.name)}</b><span class="muted small">${ROOM_TYPES[r.type]} · ${roomSeats(r).length} places</span></button>`).join('') + '</div>' : '<div class="empty">Aucune salle pour l\'instant.</div>';
+  h += S.rooms.length ? '<div class="cards">' + S.rooms.map((r) => `<button class="card" data-r="${r.id}"><b>${esc(r.name)}</b><span class="muted small">${plural(roomSeats(r).length, 'place')} · ${plural(r.tables.length, 'table')}</span></button>`).join('') + '</div>' : '<div class="empty">Aucune salle pour l\'instant.</div>';
   h += '<div class="row"><button class="btn primary" id="r-new">＋ Nouvelle salle</button></div><p class="small muted">Une salle sert à toutes tes classes : chaque classe a son propre plan dans chaque salle.</p></main>';
   mount(h, () => go({ name: 'home' }));
   $$('[data-r]').forEach((b) => { b.onclick = () => go({ name: 'salle', r: b.dataset.r }); });
   $('#r-new').onclick = () => go({ name: 'salle', r: null });
 }
 function renderSalle() {
-  let room = S.rooms.find((r) => r.id === view.r);
-  const isNew = !room;
-  if (isNew) { room = view.draft || (view.draft = { id: uid(), name: '', type: 'rows', p: { ...ROOM_DEF.rows } }); }
-  const back = () => go(view.back || { name: 'salles' });
-  const seats = roomSeats(room);
-  const W = Math.max(...seats.map((s) => s.x)) + 1, H = Math.max(...seats.map((s) => s.y)) + 1;
-  const num = (k, label, min, max) => `<label>${label} <input type="number" data-p="${k}" min="${min}" max="${max}" value="${room.p[k]}"></label>`;
-  const fields = room.type === 'rows' ? num('rows', 'Rangées', 1, 12) + num('tables', 'Tables par rangée', 1, 8) + num('places', 'Places par table', 1, 4)
-    : room.type === 'islands' ? num('islands', 'Îlots', 1, 12) + num('size', 'Places par îlot', 2, 8) + num('perRow', 'Îlots par ligne', 1, 6)
-    : num('left', 'Places côté gauche', 0, 16) + num('back', 'Places au fond', 0, 20) + num('right', 'Places côté droit', 0, 16);
-  let h = bar(isNew ? 'Nouvelle salle' : 'Salle · ' + esc(room.name), back) + '<main class="wrap">';
-  h += `<label class="f"><span>Nom</span><input type="text" id="r-name" value="${esc(room.name)}" placeholder="B12, Labo…"></label>
-    <div class="row">${Object.entries(ROOM_TYPES).map(([k, v]) => `<label class="chip"><input type="radio" name="rt" value="${k}"${room.type === k ? ' checked' : ''}> ${v}</label>`).join('')}</div>
-    <div class="row">${fields}</div>
-    <p class="small muted">${seats.length} places · vue depuis le fond de la salle (tableau en haut).</p>
-    <div class="plan-scroll"><div class="plan-wrap" style="width:max(100%, ${Math.round(W * 44)}px)"><div class="board">▲ Tableau / bureau ▲</div><div class="plan" style="aspect-ratio:${W} / ${(H * 0.62).toFixed(2)}">${seats.map((s) => `<div class="seat occ" style="left:${s.x / W * 100}%;top:${s.y / H * 100}%;width:${100 / W}%;height:${100 / H}%"><div class="seat-in"></div></div>`).join('')}</div></div></div>
-    <div class="row"><button class="btn primary" id="r-save">${isNew ? 'Créer la salle' : 'Enregistrer'}</button>${isNew ? '' : '<button class="btn danger" id="r-del">Supprimer la salle</button>'}</div>
-    ${isNew ? '' : '<p class="small muted">Si tu enlèves des places, les élèves qui y étaient repassent dans « pas encore placés ».</p>'}</main>`;
+  const room = S.rooms.find((r) => r.id === view.r);
+  const back = () => go(view.back ? { ...view.back, r: room ? room.id : view.back.r } : { name: 'salles' });
+  if (!room) {
+    const tpl = view.tpl || 'rows';
+    let h = bar('Nouvelle salle', back) + `<main class="wrap"><label class="f"><span>Nom</span><input type="text" id="r-name" value="${esc(view.rname || '')}" placeholder="B12, Labo…"></label>
+      <p><b>Pour commencer</b> <span class="small muted">(ensuite tu déplaces chaque table comme tu veux)</span></p>
+      <div class="row">${Object.entries(TEMPLATES).map(([k, x]) => `<label class="chip"><input type="radio" name="tp" value="${k}"${k === tpl ? ' checked' : ''}> ${x.label}</label>`).join('')}</div>
+      <div class="row">${TEMPLATES[tpl].fields.map(([k, l, mi, ma, d]) => `<label>${l} <input type="number" data-f="${k}" min="${mi}" max="${ma}" value="${d}"></label>`).join('')}</div>
+      <div class="row"><button class="btn primary" id="r-create">Créer et disposer les tables</button></div></main>`;
+    mount(h, back);
+    $('#r-name').oninput = (e) => { view.rname = e.target.value; };
+    $$('input[name=tp]').forEach((r) => { r.onchange = () => { view.tpl = r.value; render(); }; });
+    $('#r-create').onclick = () => {
+      const p = { ...tplDefaults(tpl) }; $$('[data-f]').forEach((i) => { p[i.dataset.f] = Math.max(Number(i.min), Math.min(Number(i.max), Math.round(Number(i.value) || 0))); });
+      const r = newRoom($('#r-name').value.trim() || 'Ma salle', tpl, p);
+      S.rooms.push(r); save();
+      go({ name: 'salle', r: r.id, back: view.back });
+    };
+    return;
+  }
+  let h = bar('Salle · ' + esc(room.name), back) + `<main class="wrap wide"><div class="row"><label>Nom <input type="text" id="r-name" value="${esc(room.name)}"></label><button class="btn sm primary" id="r-ok">✔ Terminé</button></div>`;
+  h += tablesEditorHTML(room);
+  h += '<div class="row"><button class="btn danger" id="r-del">Supprimer la salle</button></div></main>';
   mount(h, back);
-  const work = room; // nouvelle salle : brouillon ; salle existante : modifiée directement
-  $('#r-name').oninput = (e) => { work.name = e.target.value; };
-  $$('input[name=rt]').forEach((r) => { r.onchange = () => { work.type = r.value; work.p = { ...ROOM_DEF[r.value] }; if (!isNew) save(); render(); }; });
-  $$('[data-p]').forEach((i) => { i.onchange = () => { work.p[i.dataset.p] = Math.max(Number(i.min), Math.min(Number(i.max), Math.round(Number(i.value) || 0))); if (!isNew) save(); render(); }; });
-  $('#r-save').onclick = () => {
-    work.name = $('#r-name').value.trim() || 'Ma salle';
-    if (isNew) S.rooms.push(work);
-    const ids = new Set(roomSeats(work).map((s) => s.id));
-    for (const k of Object.keys(S.plans)) if (k.endsWith('|' + work.id)) for (const sid of Object.keys(S.plans[k])) if (!ids.has(sid)) delete S.plans[k][sid];
-    save(); toast('Salle enregistrée.');
-    go(view.back ? { ...view.back, r: work.id } : { name: 'salles' });
-  };
-  $('#r-del')?.addEventListener('click', () => {
+  $('#r-name').onchange = (e) => { room.name = e.target.value.trim() || room.name; save(); };
+  $('#r-ok').onclick = back;
+  $('#r-del').onclick = () => {
     if (!confirm(`Supprimer la salle ${room.name} et les plans de classe qui vont avec ?`)) return;
     S.rooms = S.rooms.filter((r) => r !== room);
     for (const k of Object.keys(S.plans)) if (k.endsWith('|' + room.id)) delete S.plans[k];
     save(); go({ name: 'salles' });
-  });
+  };
+  bindTablesEditor(room);
 }
 
 /* ----- Motifs, paliers, fiche ----- */
