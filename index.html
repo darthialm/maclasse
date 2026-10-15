@@ -1,0 +1,1002 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2f4a3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ma classe">
+<title>Ma classe</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root {
+  --ink: #1f2a24; --muted: #5f6b64; --line: #dfe3dc; --bg: #f5f4ef; --card: #ffffff; --soft: #eef1ec;
+  --accent: #2f6b4f; --accent-ink: #ffffff; --accent-soft: #e2efe7;
+  --red: #b3261e; --red-soft: #fbe3e1; --or: #b25e00; --or-soft: #fdebd6; --yel: #8a6d00; --yel-soft: #fbf3cf;
+  --green: #22703f; --green-soft: #dff1e5; --blue: #2c5aa0; --blue-soft: #e3ecfa;
+  --radius: 14px;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; min-height: 100vh; }
+button, input, select, textarea { font: inherit; color: inherit; }
+h1 { font-size: 1.15rem; margin: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+h2 { font-size: 1.05rem; margin: 22px 0 8px; }
+h3 { font-size: .8rem; margin: 10px 0 6px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.muted { color: var(--muted); } .small { font-size: .87rem; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 12px 16px 90px; }
+.bar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 8px; padding: 10px 12px; padding-top: max(10px, env(safe-area-inset-top)); background: var(--accent); color: var(--accent-ink); }
+.bar .bar-r { display: flex; gap: 6px; align-items: center; }
+.ib { border: 0; background: rgba(255,255,255,.14); color: inherit; min-width: 40px; height: 40px; border-radius: 10px; font-size: 1.1rem; cursor: pointer; padding: 0 10px; }
+.ib:active { background: rgba(255,255,255,.3); }
+.logo { width: 30px; text-align: center; }
+.btn { border: 1.5px solid var(--line); background: var(--card); border-radius: 12px; padding: 9px 16px; font-weight: 650; cursor: pointer; }
+.btn.sm { padding: 5px 11px; font-size: .9rem; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.danger { color: var(--red); border-color: #e9b9b5; }
+.btn:disabled { opacity: .5; }
+.link { border: 0; background: none; color: var(--accent); text-decoration: underline; cursor: pointer; padding: 4px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+input[type=text], input[type=password], input[type=number], input[type=date], select, textarea { border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--card); max-width: 100%; }
+textarea { width: 100%; }
+input[type=number] { width: 80px; }
+label.f { display: block; margin: 10px 0; }
+label.f > span { display: block; font-weight: 600; margin-bottom: 4px; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; margin: 12px 0; }
+.banner { border-radius: 12px; padding: 10px 12px; margin: 10px 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.banner.warn { background: var(--or-soft); color: #6b3a00; }
+.banner.info { background: var(--blue-soft); color: #1d3f73; }
+.empty { text-align: center; color: var(--muted); padding: 26px 10px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin: 12px 0; }
+.card { text-align: left; border: 1px solid var(--line); background: var(--card); border-radius: var(--radius); padding: 14px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+.card b { font-size: 1.15rem; }
+.pill { display: inline-block; align-self: flex-start; border-radius: 99px; padding: 1px 10px; font-size: .82rem; font-weight: 700; }
+.pill.red { background: var(--red-soft); color: var(--red); } .pill.green { background: var(--green-soft); color: var(--green); } .pill.or { background: var(--or-soft); color: var(--or); }
+.menu { display: grid; gap: 6px; margin: 18px 0; }
+.mi { text-align: left; border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 12px 14px; cursor: pointer; }
+.foot { margin-top: 24px; text-align: center; }
+
+/* barre secondaire du cours */
+.subbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 10px; }
+.subbar select { flex: 1 1 160px; }
+
+/* plan de classe */
+.plan-scroll { overflow-x: auto; padding-bottom: 6px; }
+.plan-wrap { margin: 0 auto; }
+.board { text-align: center; font-size: .8rem; font-weight: 700; color: var(--muted); background: var(--soft); border-radius: 8px; padding: 4px; margin: 6px 0; letter-spacing: .05em; }
+.plan { position: relative; width: 100%; }
+.seat { position: absolute; padding: 3px; }
+.seat-in { width: 100%; height: 100%; border-radius: 10px; border: 1.5px dashed #cdd3cb; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; overflow: hidden; padding: 2px; }
+.seat.occ .seat-in { border: 1.5px solid var(--line); background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,.05); cursor: pointer; }
+.seat .nm { font-weight: 650; font-size: .84rem; line-height: 1.1; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bd { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; min-height: 16px; }
+.d { font-style: normal; font-size: .72rem; font-weight: 800; border-radius: 99px; padding: 0 6px; line-height: 16px; }
+.d.n1 { background: var(--yel-soft); color: var(--yel); } .d.n2 { background: var(--or-soft); color: var(--or); } .d.n3 { background: var(--red); color: #fff; }
+.d.g { background: var(--red); color: #fff; } .d.p { background: var(--green-soft); color: var(--green); } .d.v { background: none; padding: 0; }
+.seat.al-red .seat-in { border-color: var(--red); background: var(--red-soft); }
+.seat.al-or .seat-in { border-color: #f0c38c; }
+.seat.al-pos .seat-in { box-shadow: 0 0 0 2px var(--green) inset; }
+.seat.sel .seat-in, .chip.sel { outline: 3px solid var(--blue); outline-offset: 1px; }
+.edit .seat .seat-in { cursor: pointer; }
+.edit [data-s] { touch-action: none; }
+.unplaced { margin: 12px 0; padding: 10px; border-radius: 12px; background: var(--soft); min-height: 52px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1.5px solid var(--line); background: var(--card); border-radius: 99px; padding: 5px 12px; font-weight: 600; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.ghost { position: fixed; z-index: 100; pointer-events: none; transform: translate(-50%, -60%); background: var(--blue); color: #fff; border-radius: 99px; padding: 6px 14px; font-weight: 700; box-shadow: 0 6px 16px rgba(0,0,0,.25); }
+
+/* vue liste */
+.list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.li { display: flex; justify-content: space-between; align-items: center; gap: 6px; border: 1.5px solid var(--line); background: var(--card); border-radius: 12px; padding: 10px 12px; cursor: pointer; text-align: left; }
+.li.al-red { border-color: var(--red); background: var(--red-soft); }
+.li .nm { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* feuille de saisie */
+.overlay { position: fixed; inset: 0; background: rgba(20,30,25,.42); z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: var(--card); width: 100%; max-width: 720px; max-height: 88vh; overflow: auto; border-radius: 18px 18px 0 0; padding: 14px 16px; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+@media (min-width: 760px) { .overlay { align-items: center; } .sheet { border-radius: 18px; } }
+.sheet-h { display: flex; align-items: flex-start; gap: 8px; }
+.sheet-h > div { flex: 1; }
+.sheet-h b { font-size: 1.25rem; }
+.sheet .ib { background: var(--soft); color: var(--ink); }
+.mbtns { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.mb { display: flex; align-items: center; gap: 8px; text-align: left; border: 1.5px solid var(--line); border-radius: 12px; padding: 11px 10px; background: var(--card); cursor: pointer; font-weight: 600; min-height: 50px; }
+.mb span { font-size: 1.25rem; }
+.mb-neg { background: #fffaf2; } .mb-grave { background: var(--red-soft); border-color: #eab7b2; } .mb-pos { background: var(--green-soft); border-color: #b9dcc5; }
+.mb.am { opacity: .55; border-style: dashed; }
+.note { width: 100%; margin: 10px 0 2px; }
+
+/* toast */
+#toast { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 90; background: #1f2a24; color: #fff; border-radius: 14px; padding: 10px 14px; display: flex; gap: 12px; align-items: center; max-width: calc(100% - 24px); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+#toast button { border: 0; background: #fff; color: #1f2a24; border-radius: 10px; padding: 6px 12px; font-weight: 800; cursor: pointer; }
+#toast[hidden] { display: none; }
+
+/* suivi */
+.alert { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; border-radius: 12px; padding: 10px 12px; margin: 6px 0; background: var(--card); border: 1px solid var(--line); }
+.alert.red { border-left: 5px solid var(--red); } .alert.green { border-left: 5px solid var(--green); }
+.alert .txt { flex: 1 1 260px; }
+.alert .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.balance { display: flex; height: 14px; border-radius: 99px; overflow: hidden; background: var(--soft); margin: 6px 0; }
+.balance i { display: block; } .balance .bp { background: var(--green); } .balance .bn { background: var(--or); }
+table.t { width: 100%; border-collapse: collapse; font-size: .93rem; background: var(--card); border-radius: 12px; overflow: hidden; }
+table.t th, table.t td { padding: 7px 9px; border-bottom: 1px solid var(--line); text-align: left; }
+table.t th { background: var(--soft); font-size: .82rem; }
+table.t tr.click { cursor: pointer; }
+.tw { overflow-x: auto; }
+
+/* fiche élève */
+.chart { display: flex; align-items: flex-end; gap: 6px; height: 110px; padding: 8px 4px 0; }
+.chart .wk { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; justify-content: flex-end; }
+.chart .bars { display: flex; gap: 2px; align-items: flex-end; height: 80px; }
+.chart .bars i { width: 10px; border-radius: 4px 4px 0 0; display: block; }
+.chart .bp { background: var(--green); } .chart .bn { background: var(--or); }
+.chart .lab { font-size: .68rem; color: var(--muted); }
+.hist { list-style: none; padding: 0; margin: 0; }
+.hist li { display: flex; gap: 8px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.hist .when { color: var(--muted); font-size: .85rem; min-width: 104px; }
+.hist .what { flex: 1; }
+.hist .x { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 1rem; padding: 4px 8px; }
+.tag { font-size: .72rem; font-weight: 700; border-radius: 6px; padding: 0 6px; margin-left: 4px; }
+.tag.am { background: var(--soft); color: var(--muted); } .tag.ed { background: var(--blue-soft); color: var(--blue); }
+.hist li.done { color: var(--blue); font-size: .9rem; }
+
+/* écran neutre / verrouillage */
+.lock { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 20px; background: #24372d; color: #e9efe9; text-align: center; }
+.clock { font-size: clamp(4rem, 18vw, 9rem); font-weight: 200; letter-spacing: .02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.date { font-size: 1.2rem; opacity: .8; }
+.lk { display: flex; gap: 8px; margin-top: 40px; flex-wrap: wrap; justify-content: center; }
+.lk input { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.25); color: #fff; width: 190px; }
+.lk input::placeholder { color: rgba(255,255,255,.55); }
+.lock .link { color: #cfe3d6; }
+.lock .msg { min-height: 1.4em; color: #ffd2cc; }
+.lock .box { color: var(--ink); text-align: left; max-width: 420px; }
+.setup { max-width: 560px; }
+.recov { font: 700 1.6rem/1.2 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .08em; background: var(--soft); border-radius: 12px; padding: 14px; text-align: center; margin: 10px 0; user-select: all; }
+
+/* fiche parents */
+.paper { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 26px 28px; max-width: 800px; margin: 12px auto; color: #111; }
+.paper h2 { margin: 4px 0 2px; font-size: 1.3rem; }
+.paper .ph { display: flex; justify-content: space-between; gap: 10px; font-size: .9rem; color: #444; }
+.paper h3 { color: #222; font-size: .95rem; text-transform: none; letter-spacing: 0; margin-top: 18px; }
+.paper table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.paper td, .paper th { border: 1px solid #ccc; padding: 5px 8px; text-align: left; vertical-align: top; }
+.paper th { background: #f2f2f2; }
+.paper .pf { margin-top: 18px; font-size: .82rem; color: #555; }
+@media print {
+  body { background: #fff; }
+  .bar, .noprint, #toast { display: none !important; }
+  .wrap { padding: 0; max-width: none; }
+  .paper { border: 0; margin: 0; padding: 0; max-width: none; }
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" hidden></div>
+<noscript>Cet outil a besoin de JavaScript.</noscript>
+<script>
+'use strict';
+/* =========================================================
+   Ma classe — suivi du comportement en classe
+   Toutes les données restent sur l'appareil, chiffrées (AES-GCM) avec une clé
+   protégée par le code du professeur (PBKDF2). Rien n'est envoyé sur internet.
+   ========================================================= */
+const APP_VERSION = '2026-10-15.1';
+const LS_KEYS = 'maclasse-cles', LS_DATA = 'maclasse-donnees', LS_TRY = 'maclasse-essais';
+const DAY = 864e5;
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
+const ls = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) { /* rien */ } },
+};
+const pad = (n) => String(n).padStart(2, '0');
+const dShort = (t) => { const d = new Date(t); return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`; };
+const dFull = (t) => new Date(t).toLocaleDateString('fr-FR');
+const hm = (t) => { const d = new Date(t); return `${d.getHours()}h${pad(d.getMinutes())}`; };
+const dLong = (t) => new Date(t).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+const ord = (n) => (n === 1 ? '1re' : n + 'e');
+const plural = (n, s, p = s + 's') => `${n} ${n > 1 ? p : s}`;
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function weekStart(t = Date.now()) { const d = new Date(t); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getTime(); }
+
+/* ---------- Chiffrement ---------- */
+const te = new TextEncoder(), td = new TextDecoder();
+function toB64(buf) { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); }
+function fromB64(s) { const b = atob(s); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+const rnd = (n) => crypto.getRandomValues(new Uint8Array(n));
+async function kek(secret, salt) {
+  const base = await crypto.subtle.importKey('raw', te.encode(secret), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 250000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function aesEnc(key, bytes) { const iv = rnd(12); const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, bytes); return { iv: toB64(iv), ct: toB64(ct) }; }
+async function aesDec(key, o) { return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(o.iv) }, key, fromB64(o.ct))); }
+const importDK = (raw) => crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']);
+async function wrapWith(secret, raw) { const salt = rnd(16); const k = await kek(secret, salt); return { salt: toB64(salt), ...(await aesEnc(k, raw)) }; }
+async function unwrapWith(secret, w) { const k = await kek(secret, fromB64(w.salt)); return aesDec(k, w); }
+const B32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+function genRecovery() { const r = rnd(12); let s = ''; for (const b of r) s += B32[b & 31]; return s.match(/.{4}/g).join('-'); }
+const normRecovery = (s) => String(s).toUpperCase().replace(/O/g, '0').replace(/[IL]/g, '1').replace(/[^0-9A-Z]/g, '');
+
+/* ---------- Session ---------- */
+let S = null, DK = null, RAW = null; // état déchiffré, clé de données, clé brute (seulement quand c'est ouvert)
+let view = { name: 'home' };
+const hasKeys = () => !!ls.get(LS_KEYS);
+const getKeys = () => { try { return JSON.parse(ls.get(LS_KEYS)); } catch (e) { return null; } };
+async function persist() {
+  if (!DK || !S) return;
+  const o = await aesEnc(DK, te.encode(JSON.stringify(S)));
+  if (!ls.set(LS_DATA, JSON.stringify(o))) toast('⚠ La mémoire de l\'appareil est pleine : fais une sauvegarde puis efface les anciennes remarques.');
+}
+let saveT = null;
+function save() { clearTimeout(saveT); saveT = setTimeout(() => { saveT = null; persist(); }, 200); }
+async function flush() { if (saveT) { clearTimeout(saveT); saveT = null; await persist(); } }
+async function openWith(raw) {
+  RAW = raw; DK = await importDK(raw);
+  const d = ls.get(LS_DATA);
+  S = d ? JSON.parse(td.decode(await aesDec(DK, JSON.parse(d)))) : defaultState();
+  migrate(S);
+}
+async function lock() {
+  if (!S) return;
+  await flush();
+  S = null; DK = null; RAW = null; closeSheet(); hideToast();
+  view = { name: 'home' };
+  render();
+}
+let idleT = null, fileOpUntil = 0;
+function bump() { clearTimeout(idleT); if (S && S.settings.lockMin > 0) idleT = setTimeout(lock, S.settings.lockMin * 60000); }
+['pointerdown', 'keydown'].forEach((ev) => document.addEventListener(ev, bump, { passive: true }));
+document.addEventListener('visibilitychange', () => { if (document.hidden && S && Date.now() > fileOpUntil) lock(); });
+
+/* ---------- Données ---------- */
+const DEFAULT_MOTIFS = [
+  { id: 'bav', label: 'Bavardage', icon: '💬', kind: 'neg', amen: true },
+  { id: 'tnf', label: 'Travail non fait', icon: '📄', kind: 'neg', amen: false },
+  { id: 'oub', label: 'Oubli de matériel', icon: '🎒', kind: 'neg', amen: true },
+  { id: 'bou', label: 'Se lever / bouger', icon: '🚶', kind: 'neg', amen: true },
+  { id: 'mai', label: 'Parler sans lever la main', icon: '✋', kind: 'neg', amen: true },
+  { id: 'att', label: 'Attitude', icon: '😤', kind: 'neg', amen: false },
+  { id: 'par', label: 'Participation', icon: '🙋', kind: 'pos' },
+  { id: 'per', label: 'Persévérance', icon: '💪', kind: 'pos' },
+  { id: 'pro', label: 'Progrès', icon: '📈', kind: 'pos' },
+  { id: 'ent', label: 'Entraide', icon: '🤝', kind: 'pos' },
+  { id: 'aut', label: 'Autonomie', icon: '🧭', kind: 'pos' },
+  { id: 'ame', label: 'En amélioration', icon: '🌱', kind: 'pos' },
+  { id: 'ins', label: 'Insulte', icon: '🛑', kind: 'grave' },
+  { id: 'vio', label: 'Violence / mise en danger', icon: '⚠️', kind: 'grave' },
+  { id: 'ref', label: "Refus d'obéir", icon: '⛔', kind: 'grave' },
+];
+const KINDS = [['neg', 'Remarques'], ['pos', 'Positifs'], ['grave', 'Graves (observation directe)']];
+function defaultState() {
+  return {
+    v: 1, created: Date.now(), classes: [], rooms: [], plans: {}, events: [], done: [], lastBackup: 0,
+    motifs: DEFAULT_MOTIFS.map((m) => ({ ...m })),
+    settings: { neg: 3, pos: 5, posAmen: 3, posDays: 14, valorDays: 7, invisibleDays: 14, lockMin: 3, prof: '', etab: '', view: 'back' },
+  };
+}
+function migrate(s) {
+  const d = defaultState();
+  for (const k of Object.keys(d)) if (s[k] === undefined) s[k] = d[k];
+  s.settings = { ...d.settings, ...s.settings };
+  for (const c of s.classes) { c.sep = c.sep || []; for (const t of c.students) { t.amenM = t.amenM || []; } }
+}
+const cls = (id) => S.classes.find((c) => c.id === id);
+const motif = (id) => S.motifs.find((m) => m.id === id) || { id, label: '(motif supprimé)', icon: '•', kind: 'neg' };
+const amenableIds = () => S.motifs.filter((m) => m.kind === 'neg' && m.amen && !m.hidden).map((m) => m.id);
+const isAmenEvent = (stu, e) => !!stu.amen && stu.amenM.includes(e.m);
+function lastDone(sid, type) { let t = 0; for (const d of S.done) if (d.s === sid && d.type === type && d.t > t) t = d.t; return t; }
+function status(stu, now = Date.now()) {
+  const evs = S.events.filter((e) => e.s === stu.id);
+  const dn = lastDone(stu.id, 'neg'), dp = lastDone(stu.id, 'pos'), ws = weekStart(now);
+  const kind = (e) => motif(e.m).kind;
+  const negCounted = evs.filter((e) => kind(e) === 'neg' && e.t >= ws && e.t > dn && !isAmenEvent(stu, e));
+  const graves = evs.filter((e) => kind(e) === 'grave' && e.t > dn && e.t > now - 30 * DAY);
+  const posCounted = evs.filter((e) => kind(e) === 'pos' && e.t >= now - S.settings.posDays * DAY && e.t > dp);
+  const posTh = stu.amen ? S.settings.posAmen : S.settings.pos;
+  const lastPos = evs.reduce((m, e) => (kind(e) === 'pos' && e.t > m ? e.t : m), 0);
+  const lastAny = evs.reduce((m, e) => Math.max(m, e.t), 0);
+  return {
+    negCounted, graves, posCounted, posTh, lastAny,
+    negAlert: negCounted.length >= S.settings.neg || graves.length > 0,
+    posAlert: posCounted.length >= posTh,
+    valor: !!stu.amen && now - Math.max(lastPos, stu.since || 0) > S.settings.valorDays * DAY,
+  };
+}
+function classAlerts(c) { let neg = 0, pos = 0; for (const t of c.students) { const s = status(t); if (s.negAlert) neg++; if (s.posAlert) pos++; } return { neg, pos }; }
+
+/* ---------- Salles ---------- */
+const ROOM_TYPES = { rows: 'Rangées', islands: 'Îlots', u: 'En U' };
+const ROOM_DEF = { rows: { rows: 5, tables: 3, places: 2 }, islands: { islands: 6, size: 4, perRow: 3 }, u: { left: 6, back: 8, right: 6 } };
+function roomSeats(room) {
+  const p = room.p, seats = [];
+  if (room.type === 'rows') {
+    for (let r = 0; r < p.rows; r++) for (let t = 0; t < p.tables; t++) for (let k = 0; k < p.places; k++) seats.push({ id: `r${r}t${t}p${k}`, x: t * (p.places + 0.6) + k, y: r * 1.35, g: `r${r}t${t}` });
+  } else if (room.type === 'islands') {
+    const h = Math.ceil(p.size / 2);
+    for (let i = 0; i < p.islands; i++) { const cx = (i % p.perRow) * 2.8, cy = Math.floor(i / p.perRow) * (h + 0.7); for (let k = 0; k < p.size; k++) seats.push({ id: `i${i}p${k}`, x: cx + (k % 2), y: cy + Math.floor(k / 2), g: `i${i}` }); }
+  } else {
+    const H = Math.max(p.left, p.right);
+    for (let k = 0; k < p.left; k++) seats.push({ id: `uL${k}`, x: 0, y: k, g: 'uL' + Math.floor(k / 2) });
+    for (let k = 0; k < p.back; k++) seats.push({ id: `uB${k}`, x: 1.4 + k, y: H + 0.3, g: 'uB' + Math.floor(k / 2) });
+    for (let k = 0; k < p.right; k++) seats.push({ id: `uR${k}`, x: p.back + 1.8, y: k, g: 'uR' + Math.floor(k / 2) });
+  }
+  return seats;
+}
+const adjacent = (a, b) => a.g === b.g || Math.hypot(a.x - b.x, a.y - b.y) < 1.1;
+const planKey = (c, r) => c.id + '|' + r.id;
+function seatOf(plan, sid) { return Object.keys(plan).find((k) => plan[k] === sid); }
+function placeStudent(plan, sid, seatId) {
+  const prev = seatOf(plan, sid), other = plan[seatId];
+  if (prev === seatId) return;
+  if (prev) delete plan[prev];
+  if (other && other !== sid) { if (prev) plan[prev] = other; }
+  plan[seatId] = sid;
+}
+function autoPlace(c, room, { amenFront, sep }) {
+  const seats = roomSeats(room);
+  const W = Math.max(...seats.map((s) => s.x));
+  const front = seats.slice().sort((a, b) => a.y - b.y || Math.abs(a.x - W / 2) - Math.abs(b.x - W / 2));
+  let best = null, bestBad = Infinity;
+  for (let tries = 0; tries < 400 && bestBad > 0; tries++) {
+    const studs = shuffle(c.students.slice());
+    const first = amenFront ? studs.filter((t) => t.amen) : [];
+    const rest = studs.filter((t) => !first.includes(t));
+    const order = [...first, ...rest];
+    const plan = {}; const pos = {};
+    // les élèves avec aménagements devant, puis les autres en remplissant de l'avant vers l'arrière
+    const free = front.slice();
+    order.forEach((t, i) => { if (i < free.length) { plan[free[i].id] = t.id; pos[t.id] = free[i]; } });
+    let bad = 0;
+    if (sep) for (const [a, b] of c.sep) if (pos[a] && pos[b] && adjacent(pos[a], pos[b])) bad++;
+    if (bad < bestBad) { bestBad = bad; best = plan; }
+    if (!sep || !c.sep.length) break;
+  }
+  return { plan: best, bad: bestBad, missing: Math.max(0, c.students.length - seats.length) };
+}
+
+/* ---------- Petits composants ---------- */
+const app = document.getElementById('app');
+function bar(title, back) {
+  return `<header class="bar">${back ? '<button class="ib" id="b-back" aria-label="Retour">←</button>' : '<span class="logo" aria-hidden="true">▦</span>'}<h1>${title}</h1><div class="bar-r"><button class="ib" id="b-lock" aria-label="Verrouiller" title="Verrouiller (écran neutre)">🔒</button></div></header>`;
+}
+function mount(html, back) {
+  app.innerHTML = html;
+  const b = $('#b-back'); if (b && back) b.onclick = back;
+  const l = $('#b-lock'); if (l) l.onclick = lock;
+}
+function go(v) { view = v; closeSheet(); render(); window.scrollTo(0, 0); }
+let toastT = null;
+function toast(msg, act, fn, ms = 6000) {
+  const t = $('#toast');
+  t.innerHTML = `<span>${esc(msg)}</span>${act ? `<button type="button">${esc(act)}</button>` : ''}`;
+  t.hidden = false;
+  if (act) t.querySelector('button').onclick = () => { t.hidden = true; fn(); };
+  clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, ms);
+}
+function hideToast() { $('#toast').hidden = true; }
+function openSheet(html, bind) {
+  closeSheet();
+  const o = document.createElement('div'); o.className = 'overlay'; o.id = 'overlay';
+  o.innerHTML = `<div class="sheet" role="dialog" aria-modal="true">${html}</div>`;
+  o.addEventListener('click', (e) => { if (e.target === o) closeSheet(); });
+  document.body.appendChild(o);
+  bind(o);
+}
+function closeSheet() { $('#overlay')?.remove(); }
+async function copyText(txt, btn) {
+  let ok = false;
+  try { await navigator.clipboard.writeText(txt); ok = true; } catch (e) {
+    const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select();
+    try { ok = document.execCommand('copy'); } catch (_) { /* rien */ } ta.remove();
+  }
+  if (btn) { const o = btn.textContent; btn.textContent = ok ? '✔ Copié' : 'Copie impossible'; setTimeout(() => { btn.textContent = o; }, 1600); }
+}
+function badges(st) {
+  const n = st.negCounted.length, p = st.posCounted.length;
+  let h = '';
+  if (st.graves.length) h += '<i class="d g" title="Fait grave">!</i>';
+  if (n) h += `<i class="d n${Math.min(n, 3)}" title="Remarques cette semaine">${n}</i>`;
+  if (p) h += `<i class="d p" title="Positifs">+${p}</i>`;
+  if (st.valor) h += '<i class="d v" title="À valoriser">✨</i>';
+  return h;
+}
+function alertCls(st) { return st.negAlert ? 'al-red' : st.negCounted.length === S.settings.neg - 1 && st.negCounted.length > 0 ? 'al-or' : st.posAlert ? 'al-pos' : ''; }
+
+/* ---------- Rendu ---------- */
+function render() {
+  if (!hasKeys()) return renderSetup();
+  if (!S) return renderLock();
+  bump();
+  const r = { home: renderHome, lesson: renderLesson, suivi: renderSuivi, eleve: renderEleve, parents: renderParents, classe: renderClasse, salles: renderSalles, salle: renderSalle, reglages: renderReglages, securite: renderSecurite }[view.name];
+  (r || renderHome)();
+}
+
+/* ----- Première ouverture ----- */
+function renderSetup() {
+  if (view.name === 'recovery') {
+    app.innerHTML = `<div class="lock"><div class="box setup"><h2>Ton code de secours</h2>
+      <p>Note-le sur papier et range-le chez toi. Il sert seulement si tu oublies ton code. <b>Sans ton code et sans ce code de secours, personne ne pourra ouvrir les données</b> (même pas l'auteur de l'outil).</p>
+      <div class="recov">${esc(view.code)}</div>
+      <label class="row"><input type="checkbox" id="rc-ok"> Je l'ai noté.</label>
+      <button class="btn primary" id="rc-go" disabled>Commencer</button></div></div>`;
+    $('#rc-ok').onchange = (e) => { $('#rc-go').disabled = !e.target.checked; };
+    $('#rc-go').onclick = () => { view = { name: 'home' }; render(); };
+    return;
+  }
+  app.innerHTML = `<div class="lock"><div class="box setup">
+    <h2>Bienvenue dans Ma classe</h2>
+    <p class="small">Tu notes en un geste les remarques et les points positifs de tes élèves. L'outil te dit quand un palier est atteint, pour que tu fasses la saisie sur École Directe. <b>Tout reste sur cet appareil</b>, chiffré avec ton code. Rien n'est envoyé sur internet.</p>
+    <form id="su-form">
+      <label class="f"><span>Choisis ton code (6 caractères minimum)</span><input type="password" id="su-c1" autocomplete="new-password" minlength="6" required></label>
+      <label class="f"><span>Retape-le</span><input type="password" id="su-c2" autocomplete="new-password" minlength="6" required></label>
+      <p class="small ko" id="su-msg" style="color:var(--red)"></p>
+      <button class="btn primary">Créer mon espace</button>
+    </form>
+    <p class="small muted">Tu as déjà une sauvegarde ? <label class="link">Restaurer un fichier<input type="file" id="su-file" accept=".json,application/json" hidden></label></p>
+  </div></div>`;
+  $('#su-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const c1 = $('#su-c1').value.trim(), c2 = $('#su-c2').value.trim();
+    if (c1.length < 6) { $('#su-msg').textContent = 'Le code doit faire au moins 6 caractères.'; return; }
+    if (c1 !== c2) { $('#su-msg').textContent = 'Les deux codes ne sont pas identiques.'; return; }
+    $('#su-msg').textContent = 'Création…';
+    const raw = rnd(32), rec = genRecovery();
+    const keys = { v: 1, w1: await wrapWith(c1, raw), w2: await wrapWith(normRecovery(rec), raw) };
+    ls.set(LS_KEYS, JSON.stringify(keys)); ls.del(LS_DATA);
+    await openWith(raw); await persist();
+    view = { name: 'recovery', code: rec };
+    renderSetup();
+  };
+  $('#su-file').onchange = importFile;
+}
+
+/* ----- Écran neutre / déverrouillage ----- */
+let clockT = null;
+function renderLock() {
+  const forgot = view.name === 'forgot';
+  app.innerHTML = `<div class="lock">
+    <div class="clock" id="clk"></div><div class="date" id="dt"></div>
+    ${forgot ? `<div class="box" style="margin-top:30px"><h2>Code oublié</h2>
+      <form id="fg-form"><label class="f"><span>Code de secours</span><input type="text" id="fg-rec" autocomplete="off" autocapitalize="characters" placeholder="XXXX-XXXX-XXXX" required></label>
+      <label class="f"><span>Nouveau code (6 caractères minimum)</span><input type="password" id="fg-c1" autocomplete="new-password" required></label>
+      <label class="f"><span>Retape le nouveau code</span><input type="password" id="fg-c2" autocomplete="new-password" required></label>
+      <p class="small" id="fg-msg" style="color:var(--red)"></p>
+      <div class="row"><button class="btn primary">Valider</button><button type="button" class="btn" id="fg-back">Retour</button></div></form></div>`
+    : `<form class="lk" id="lk-form"><input type="password" id="lk-code" autocomplete="current-password" placeholder="Code" aria-label="Code"><button class="btn primary">Ouvrir</button></form>
+      <p class="msg" id="lk-msg">${view.msg ? esc(view.msg) : ''}</p>
+      <button class="link small" id="lk-forgot">Code oublié ?</button>`}
+  </div>`;
+  const tick = () => { const d = new Date(); const c = $('#clk'); if (!c) { clearInterval(clockT); return; } c.textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`; const l = dLong(d); $('#dt').textContent = l.charAt(0).toUpperCase() + l.slice(1); };
+  tick(); clearInterval(clockT); clockT = setInterval(tick, 10000);
+  if (forgot) {
+    $('#fg-back').onclick = () => { view = { name: 'home' }; render(); };
+    $('#fg-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const m = $('#fg-msg'), c1 = $('#fg-c1').value.trim();
+      if (c1.length < 6) { m.textContent = 'Le nouveau code doit faire au moins 6 caractères.'; return; }
+      if (c1 !== $('#fg-c2').value.trim()) { m.textContent = 'Les deux codes ne sont pas identiques.'; return; }
+      m.textContent = 'Vérification…';
+      const keys = getKeys(); let raw;
+      try { raw = await unwrapWith(normRecovery($('#fg-rec').value), keys.w2); } catch (_) { m.textContent = 'Ce code de secours ne correspond pas.'; return; }
+      keys.w1 = await wrapWith(c1, raw); ls.set(LS_KEYS, JSON.stringify(keys));
+      await openWith(raw); view = { name: 'home' }; render(); toast('Nouveau code enregistré.');
+    };
+    return;
+  }
+  $('#lk-forgot').onclick = () => { view = { name: 'forgot' }; render(); };
+  $('#lk-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const m = $('#lk-msg');
+    let tr = {}; try { tr = JSON.parse(ls.get(LS_TRY) || '{}'); } catch (_) { /* rien */ }
+    if (tr.until && Date.now() < tr.until) { m.textContent = `Trop d'essais. Réessaie dans ${Math.ceil((tr.until - Date.now()) / 1000)} s.`; return; }
+    const code = $('#lk-code').value.trim(); if (!code) return;
+    m.textContent = '…';
+    let raw;
+    try { raw = await unwrapWith(code, getKeys().w1); } catch (_) {
+      tr.n = (tr.n || 0) + 1;
+      if (tr.n >= 5) tr.until = Date.now() + Math.min(600, 30 * 2 ** (tr.n - 5)) * 1000;
+      ls.set(LS_TRY, JSON.stringify(tr));
+      m.textContent = 'Code incorrect.'; $('#lk-code').value = ''; return;
+    }
+    ls.del(LS_TRY);
+    try { await openWith(raw); } catch (err) { m.textContent = 'Impossible de lire les données de cet appareil (elles semblent abîmées).'; return; }
+    view = { name: 'home' }; render();
+  };
+  setTimeout(() => $('#lk-code')?.focus({ preventScroll: true }), 50);
+}
+
+/* ----- Accueil ----- */
+function renderHome() {
+  const now = Date.now();
+  const old = now - S.lastBackup;
+  const friday = new Date().getDay() === 5;
+  let h = bar('Ma classe') + '<main class="wrap">';
+  if (S.events.length && (old > 7 * DAY || (friday && old > 2 * DAY))) h += `<div class="banner warn">💾 ${S.lastBackup ? `Dernière sauvegarde : ${dLong(S.lastBackup)}.` : 'Aucune sauvegarde pour l\'instant.'} <button class="btn sm" id="h-save">Sauvegarder maintenant</button></div>`;
+  if (!S.classes.length) h += '<div class="empty"><p>Commence par créer une classe : son nom et la liste des prénoms.<br>Ensuite, crée ta salle pour avoir le plan de classe.</p></div>';
+  h += '<div class="cards">' + S.classes.map((c) => { const a = classAlerts(c); return `<button class="card" data-c="${c.id}"><b>${esc(c.name)}</b><span class="muted small">${plural(c.students.length, 'élève')}</span>${a.neg ? `<span class="pill red">${a.neg} à saisir</span>` : ''}${a.pos ? `<span class="pill green">${plural(a.pos, 'encouragement')}</span>` : ''}</button>`; }).join('') + '</div>';
+  h += '<div class="row"><button class="btn primary" id="h-new">＋ Nouvelle classe</button></div>';
+  h += `<nav class="menu"><button class="mi" id="h-rooms">🏫 Mes salles <span class="muted">(${S.rooms.length})</span></button><button class="mi" id="h-set">⚙️ Motifs, paliers et fiche parents</button><button class="mi" id="h-sec">🔐 Code, sauvegarde et effacement</button></nav>`;
+  h += `<p class="foot muted small">Données sur cet appareil uniquement, chiffrées avec ton code · Note des faits, pas des jugements · v${APP_VERSION}</p></main>`;
+  mount(h);
+  $$('.card[data-c]').forEach((b) => { b.onclick = () => { const c = cls(b.dataset.c); go({ name: 'lesson', c: c.id, r: c.lastRoom && S.rooms.some((r) => r.id === c.lastRoom) ? c.lastRoom : (S.rooms[0]?.id || '') }); }; });
+  $('#h-new').onclick = () => go({ name: 'classe', c: null });
+  $('#h-rooms').onclick = () => go({ name: 'salles' });
+  $('#h-set').onclick = () => go({ name: 'reglages' });
+  $('#h-sec').onclick = () => go({ name: 'securite' });
+  const hs = $('#h-save'); if (hs) hs.onclick = exportBackup;
+}
+
+/* ----- Cours : plan ou liste ----- */
+function renderLesson() {
+  const c = cls(view.c); if (!c) return go({ name: 'home' });
+  const room = S.rooms.find((r) => r.id === view.r) || null;
+  if (room && c.lastRoom !== room.id) { c.lastRoom = room.id; save(); }
+  const edit = !!view.edit && room;
+  const st = {}; for (const t of c.students) st[t.id] = status(t);
+  let h = bar(esc(c.name), () => go({ name: 'home' })) + `<main class="wrap${edit ? ' edit' : ''}">`;
+  h += `<div class="subbar"><select id="l-room" aria-label="Salle">${S.rooms.map((r) => `<option value="${r.id}"${room && r.id === room.id ? ' selected' : ''}>🏫 ${esc(r.name)}</option>`).join('')}<option value=""${room ? '' : ' selected'}>☰ Liste (sans plan)</option></select>
+    ${room ? `<button class="btn sm" id="l-edit">${edit ? '✔ Terminé' : '✏️ Plan'}</button>` : ''}
+    ${edit ? '' : `<button class="btn sm" id="l-suivi">📋 Suivi${(() => { const a = classAlerts(c); return a.neg || a.pos ? ` <span class="pill ${a.neg ? 'red' : 'green'}">${a.neg + a.pos}</span>` : ''; })()}</button><button class="btn sm" id="l-class">👥</button>`}</div>`;
+  if (!c.students.length) h += `<div class="empty">Cette classe n'a pas encore d'élèves. <button class="btn sm" id="l-add">Ajouter les prénoms</button></div>`;
+  else if (room) {
+    const plan = S.plans[planKey(c, room)] || {};
+    const seats = roomSeats(room);
+    const okSeat = new Set(seats.map((s) => s.id)), okStu = new Set(c.students.map((t) => t.id));
+    for (const k of Object.keys(plan)) if (!okSeat.has(k) || !okStu.has(plan[k])) { delete plan[k]; save(); }
+    const W = Math.max(...seats.map((s) => s.x)) + 1, H = Math.max(...seats.map((s) => s.y)) + 1;
+    const flip = S.settings.view === 'desk';
+    const board = `<div class="board">${flip ? '▼ Tableau / bureau ▼' : '▲ Tableau / bureau ▲'}</div>`;
+    const cells = seats.map((s) => {
+      const x = flip ? W - 1 - s.x : s.x, y = flip ? H - 1 - s.y : s.y;
+      const t = plan[s.id] && c.students.find((u) => u.id === plan[s.id]);
+      return `<div class="seat${t ? ' occ ' + alertCls(st[t.id]) : ''}" data-seat="${s.id}"${t ? ` data-s="${t.id}"` : ''} style="left:${(x / W * 100).toFixed(3)}%;top:${(y / H * 100).toFixed(3)}%;width:${(100 / W).toFixed(3)}%;height:${(100 / H).toFixed(3)}%"><div class="seat-in">${t ? `<span class="nm">${esc(t.name)}</span><span class="bd">${edit ? '' : badges(st[t.id])}</span>` : ''}</div></div>`;
+    });
+    h += `<div class="plan-scroll" id="plan-area"><div class="plan-wrap" style="width:max(100%, ${Math.round(W * 52)}px)">${flip ? '' : board}<div class="plan" style="height:${Math.round(H * 60)}px">${cells.join('')}</div>${flip ? board : ''}</div></div>`;
+    const placed = new Set(Object.values(plan));
+    const un = c.students.filter((t) => !placed.has(t.id)).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+    if (edit) {
+      h += `<div class="unplaced" id="unplaced"><h3>Pas encore placés${un.length ? ` (${un.length})` : ''}</h3><div class="chips">${un.map((t) => `<button class="chip" data-s="${t.id}" data-chip="1">${esc(t.name)}</button>`).join('') || '<span class="muted small">Tout le monde est placé. Glisse un élève ici pour le retirer du plan.</span>'}</div></div>
+        <p class="small muted">Glisse un prénom sur une place, ou touche un élève puis une place. Deux élèves échangent leurs places.</p>
+        <div class="row"><button class="btn" id="pe-auto">🎲 Placement automatique</button><button class="btn danger" id="pe-clear">Vider le plan</button></div>`;
+    } else if (un.length) {
+      h += `<div class="unplaced"><h3>Pas placés sur le plan</h3><div class="chips">${un.map((t) => `<button class="chip" data-s="${t.id}">${esc(t.name)} <span class="bd">${badges(st[t.id])}</span></button>`).join('')}</div></div>`;
+    }
+  } else {
+    if (!S.rooms.length) h += '<div class="banner info">Crée ta salle pour avoir le plan de classe. <button class="btn sm" id="l-newroom">Créer une salle</button></div>';
+    const studs = c.students.slice().sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+    h += `<div class="list">${studs.map((t) => `<button class="li ${st[t.id].negAlert ? 'al-red' : ''}" data-s="${t.id}"><span class="nm">${esc(t.name)}</span><span class="bd">${badges(st[t.id])}</span></button>`).join('')}</div>`;
+  }
+  h += '</main>';
+  mount(h, () => go({ name: 'home' }));
+  $('#l-room').onchange = (e) => go({ name: 'lesson', c: c.id, r: e.target.value });
+  $('#l-edit')?.addEventListener('click', () => { view.edit = !edit; render(); });
+  $('#l-suivi')?.addEventListener('click', () => go({ name: 'suivi', c: c.id }));
+  $('#l-class')?.addEventListener('click', () => go({ name: 'classe', c: c.id }));
+  $('#l-add')?.addEventListener('click', () => go({ name: 'classe', c: c.id }));
+  $('#l-newroom')?.addEventListener('click', () => go({ name: 'salle', r: null, back: { name: 'lesson', c: c.id } }));
+  app.onpointerdown = null;
+  if (edit) return bindPlanEdit(c, room);
+  $$('[data-s]', app).forEach((el) => { el.onclick = () => openStudent(c, c.students.find((t) => t.id === el.dataset.s)); });
+}
+
+function openStudent(c, stu) {
+  if (!stu) return;
+  const st = status(stu);
+  const am = ''; // discrétion : rien n'indique les aménagements sur la feuille de saisie (les boutons non comptés sont seulement estompés)
+  openSheet(`<div class="sheet-h"><div><b>${esc(stu.name)}</b>${am}<div class="small muted">Cette semaine : ${st.negCounted.length} / ${S.settings.neg} remarque${st.negCounted.length > 1 ? 's' : ''} · ${st.posCounted.length} / ${st.posTh} positif${st.posCounted.length > 1 ? 's' : ''}${st.graves.length ? ' · <b style="color:var(--red)">fait grave à saisir</b>' : ''}</div></div><button class="ib" id="sh-x" aria-label="Fermer">✕</button></div>
+    <input type="text" class="note" id="sh-note" maxlength="160" placeholder="Précision (facultatif) : ce qui s'est passé, sans jugement">
+    ${KINDS.map(([k, t]) => { const ms = S.motifs.filter((m) => m.kind === k && !m.hidden); return ms.length ? `<h3>${t}</h3><div class="mbtns">${ms.map((m) => `<button class="mb mb-${k}${k === 'neg' && stu.amen && stu.amenM.includes(m.id) ? ' am' : ''}" data-m="${m.id}"><span>${m.icon}</span>${esc(m.label)}</button>`).join('')}</div>` : ''; }).join('')}
+    <div class="row"><button class="btn" id="sh-fiche">Voir sa fiche</button></div>`, (o) => {
+    $('#sh-x', o).onclick = closeSheet;
+    $('#sh-fiche', o).onclick = () => go({ name: 'eleve', c: c.id, s: stu.id, back: { ...view } });
+    $$('.mb', o).forEach((b) => { b.onclick = () => record(c, stu, b.dataset.m, $('#sh-note', o).value.trim()); });
+  });
+}
+function record(c, stu, mid, note) {
+  const e = { id: uid(), t: Date.now(), s: stu.id, c: c.id, m: mid }; if (note) e.n = note;
+  S.events.push(e); save();
+  const st = status(stu), m = motif(mid);
+  let msg = `${m.icon} ${m.label} · ${stu.name}`;
+  if (m.kind === 'grave') msg += ' → à saisir sur École Directe';
+  else if (m.kind === 'neg' && isAmenEvent(stu, e)) msg += ' · noté, non compté (aménagement)';
+  else if (m.kind === 'neg') msg += st.negCounted.length >= S.settings.neg ? ` · ${ord(st.negCounted.length)} remarque → à saisir sur École Directe` : ` · ${ord(st.negCounted.length)} remarque de la semaine`;
+  else if (m.kind === 'pos' && st.posCounted.length === st.posTh) msg += ' · palier atteint → encouragement à saisir';
+  closeSheet(); render();
+  toast(msg, 'Annuler', () => { S.events = S.events.filter((x) => x.id !== e.id); save(); render(); toast('Annulé.'); });
+}
+
+function bindPlanEdit(c, room) {
+  const key = planKey(c, room);
+  const plan = S.plans[key] || (S.plans[key] = {});
+  let sel = null; // { s } ou { seat }
+  const commit = () => { save(); render(); };
+  const mark = () => { $$('.sel', app).forEach((e) => e.classList.remove('sel')); if (!sel) return; const el = sel.s ? (app.querySelector(`.seat[data-s="${sel.s}"]`) || app.querySelector(`.chip[data-s="${sel.s}"]`)) : app.querySelector(`.seat[data-seat="${sel.seat}"]`); el?.classList.add('sel'); };
+  function tap(el) {
+    if (!el) { sel = null; return mark(); }
+    const T = { s: el.dataset.s || null, seat: el.dataset.seat || null, zone: el.id === 'unplaced' };
+    if (!sel) { if (T.s) sel = { s: T.s }; else if (T.seat) sel = { seat: T.seat }; return mark(); }
+    if (sel.s) {
+      if (T.s === sel.s) { sel = null; return mark(); }
+      if (T.seat) { placeStudent(plan, sel.s, T.seat); return commit(); }
+      if (T.s && el.dataset.chip) { const sp = seatOf(plan, sel.s); if (sp) { placeStudent(plan, T.s, sp); return commit(); } sel = { s: T.s }; return mark(); }
+      if (T.zone) { const sp = seatOf(plan, sel.s); if (sp) { delete plan[sp]; return commit(); } }
+    } else if (sel.seat) {
+      if (T.s) { placeStudent(plan, T.s, sel.seat); return commit(); }
+      if (T.seat) { sel = T.seat === sel.seat ? null : { seat: T.seat }; return mark(); }
+    }
+    sel = null; mark();
+  }
+  const pick = (el) => el?.closest('[data-s], [data-seat], #unplaced');
+  let drag = null;
+  app.onpointerdown = onDown;
+  function onDown(e) {
+    if (view.name !== 'lesson' || !view.edit) { app.onpointerdown = null; return; }
+    const el = pick(e.target); if (!el) return;
+    drag = { el, sid: el.dataset.s, x: e.clientX, y: e.clientY, moving: false, ghost: null };
+    document.addEventListener('pointermove', onMove); document.addEventListener('pointerup', onUp, { once: true });
+  }
+  function onMove(e) {
+    if (!drag || !drag.sid) return;
+    if (!drag.moving && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 8) {
+      drag.moving = true;
+      drag.ghost = document.createElement('div'); drag.ghost.className = 'ghost';
+      drag.ghost.textContent = c.students.find((t) => t.id === drag.sid)?.name || '';
+      document.body.appendChild(drag.ghost);
+    }
+    if (drag.moving) { e.preventDefault(); drag.ghost.style.left = e.clientX + 'px'; drag.ghost.style.top = e.clientY + 'px'; }
+  }
+  function onUp(e) {
+    document.removeEventListener('pointermove', onMove);
+    if (!drag) return;
+    const d = drag; drag = null;
+    if (!d.moving) return tap(d.el);
+    d.ghost.remove();
+    const target = pick(document.elementFromPoint(e.clientX, e.clientY));
+    if (target?.dataset.seat) { placeStudent(plan, d.sid, target.dataset.seat); return commit(); }
+    if (target && (target.id === 'unplaced' || target.dataset.chip)) { const sp = seatOf(plan, d.sid); if (sp) { delete plan[sp]; return commit(); } }
+  }
+  $('#pe-clear').onclick = () => { if (confirm('Retirer tous les élèves de ce plan ?')) { S.plans[key] = {}; commit(); } };
+  $('#pe-auto').onclick = () => {
+    const nAm = c.students.filter((t) => t.amen).length;
+    openSheet(`<div class="sheet-h"><div><b>Placement automatique</b><div class="small muted">Remplace le plan actuel de ${esc(c.name)} dans ${esc(room.name)}.</div></div><button class="ib" id="ap-x">✕</button></div>
+      <label class="row"><input type="checkbox" id="ap-am" ${nAm ? 'checked' : 'disabled'}> Élèves avec aménagements devant ${nAm ? `(${nAm})` : '(aucun)'}</label>
+      <label class="row"><input type="checkbox" id="ap-sep" ${c.sep.length ? 'checked' : 'disabled'}> Séparer les élèves à séparer ${c.sep.length ? `(${plural(c.sep.length, 'paire')})` : '(aucune paire : à régler dans 👥 la classe)'}</label>
+      <p class="small muted">Les autres élèves sont placés au hasard, en remplissant de l'avant vers l'arrière.</p>
+      <div class="row"><button class="btn primary" id="ap-go">🎲 Placer</button></div>`, (o) => {
+      $('#ap-x', o).onclick = closeSheet;
+      $('#ap-go', o).onclick = () => {
+        const r = autoPlace(c, room, { amenFront: $('#ap-am', o).checked, sep: $('#ap-sep', o).checked });
+        S.plans[key] = r.plan; closeSheet(); commit();
+        toast(r.missing ? `⚠ Pas assez de places : ${plural(r.missing, 'élève')} non placé(s).` : r.bad ? `Placé, mais ${plural(r.bad, 'paire')} n'a pas pu être séparée.` : 'Plan créé. Tu peux encore échanger des élèves.');
+      };
+    });
+  };
+}
+
+/* ----- Suivi de la classe ----- */
+function edText(stu, type) {
+  const st = status(stu);
+  if (type === 'neg') {
+    const parts = [];
+    for (const e of st.graves) parts.push(`${motif(e.m).label.toLowerCase()} le ${dFull(e.t)} à ${hm(e.t)}${e.n ? ` (${e.n})` : ''}`);
+    if (st.negCounted.length) parts.push(`${st.negCounted.length} remarques depuis lundi : ` + st.negCounted.map((e) => `${motif(e.m).label.toLowerCase()} le ${dShort(e.t)}${e.n ? ` (${e.n})` : ''}`).join(', '));
+    return `${stu.name} : ${parts.join(' ; ')}.`;
+  }
+  return `${stu.name} : encouragements. ` + st.posCounted.map((e) => `${motif(e.m).label.toLowerCase()} le ${dShort(e.t)}${e.n ? ` (${e.n})` : ''}`).join(', ') + '.';
+}
+function markDone(stu, type) {
+  S.done.push({ t: Date.now(), s: stu.id, type }); save();
+  toast(type === 'neg' ? `Saisi pour ${stu.name} : son compteur repart de zéro.` : `Encouragement saisi pour ${stu.name}.`, 'Annuler', () => { S.done.pop(); save(); render(); });
+  render();
+}
+function renderSuivi() {
+  const c = cls(view.c); if (!c) return go({ name: 'home' });
+  const now = Date.now(), ws = weekStart(now);
+  const rows = c.students.map((t) => ({ t, st: status(t) }));
+  const neg = rows.filter((r) => r.st.negAlert), pos = rows.filter((r) => r.st.posAlert);
+  const valor = rows.filter((r) => r.st.valor);
+  const invisible = (now - (c.created || 0) > S.settings.invisibleDays * DAY) ? rows.filter((r) => now - r.st.lastAny > S.settings.invisibleDays * DAY) : [];
+  const wk = S.events.filter((e) => e.c === c.id && e.t >= ws);
+  const wPos = wk.filter((e) => motif(e.m).kind === 'pos').length, wNeg = wk.length - wPos;
+  const alertRow = (r, type) => `<div class="alert ${type === 'neg' ? 'red' : 'green'}"><div class="txt"><b>${esc(r.t.name)}</b> <span class="small muted">${type === 'neg' ? (r.st.graves.length ? `fait grave : ${r.st.graves.map((e) => esc(motif(e.m).label.toLowerCase())).join(', ')}` : '') + (r.st.graves.length && r.st.negCounted.length >= S.settings.neg ? ' · ' : '') + (r.st.negCounted.length >= S.settings.neg ? `${r.st.negCounted.length} remarques cette semaine` : '') : `${r.st.posCounted.length} positifs`}</span></div>
+    <div class="acts"><button class="btn sm" data-copy="${r.t.id}" data-type="${type}">Copier le texte</button><button class="btn sm primary" data-done="${r.t.id}" data-type="${type}">✔ Saisi sur École Directe</button></div></div>`;
+  let h = bar('Suivi · ' + esc(c.name), () => go({ name: 'lesson', c: c.id, r: c.lastRoom || '' })) + '<main class="wrap">';
+  h += '<h2>🔴 Observations à saisir sur École Directe</h2>' + (neg.length ? neg.map((r) => alertRow(r, 'neg')).join('') : `<p class="muted small">Personne n'a atteint le palier (${S.settings.neg} remarques dans la semaine, ou un fait grave).</p>`);
+  h += '<h2>🟢 Encouragements à saisir</h2>' + (pos.length ? pos.map((r) => alertRow(r, 'pos')).join('') : `<p class="muted small">Personne n'a encore atteint le palier (${S.settings.pos} positifs en ${S.settings.posDays} jours${c.students.some((t) => t.amen) ? `, ${S.settings.posAmen} avec aménagements` : ''}).</p>`);
+  if (valor.length) h += `<h2>✨ À valoriser</h2><p class="small muted">Élèves avec aménagements sans positif depuis ${S.settings.valorDays} jours : cherche une occasion de les encourager.</p><div class="chips">${valor.map((r) => `<button class="chip" data-open="${r.t.id}">${esc(r.t.name)}</button>`).join('')}</div>`;
+  if (invisible.length) h += `<h2>👀 Pas vus depuis ${S.settings.invisibleDays} jours</h2><p class="small muted">Ni positif ni remarque : ce sont souvent les élèves discrets.</p><div class="chips">${invisible.map((r) => `<button class="chip" data-open="${r.t.id}">${esc(r.t.name)}</button>`).join('')}</div>`;
+  h += `<h2>Cette semaine</h2><div class="box"><b>${plural(wPos, 'positif')}</b> · <b>${plural(wNeg, 'remarque')}</b> (faits graves compris)<div class="balance">${wPos + wNeg ? `<i class="bp" style="width:${wPos / (wPos + wNeg) * 100}%"></i><i class="bn" style="width:${wNeg / (wPos + wNeg) * 100}%"></i>` : ''}</div><span class="small muted">Repère : viser nettement plus de positif que de remarques.</span></div>`;
+  const sorted = rows.slice().sort((a, b) => (b.st.graves.length * 10 + b.st.negCounted.length) - (a.st.graves.length * 10 + a.st.negCounted.length) || a.t.name.localeCompare(b.t.name, 'fr'));
+  h += `<div class="tw"><table class="t"><thead><tr><th>Élève</th><th>Remarques (semaine)</th><th>Positifs (${S.settings.posDays} j)</th><th></th></tr></thead><tbody>${sorted.map((r) => `<tr class="click" data-open="${r.t.id}"><td><b>${esc(r.t.name)}</b>${r.t.amen ? ' <span class="tag am">am.</span>' : ''}</td><td>${r.st.graves.length ? '<i class="d g">!</i> ' : ''}${r.st.negCounted.length} / ${S.settings.neg}</td><td>${r.st.posCounted.length} / ${r.st.posTh}</td><td>›</td></tr>`).join('')}</tbody></table></div>`;
+  h += '</main>';
+  mount(h, () => go({ name: 'lesson', c: c.id, r: c.lastRoom || '' }));
+  const stu = (id) => c.students.find((t) => t.id === id);
+  $$('[data-copy]').forEach((b) => { b.onclick = () => copyText(edText(stu(b.dataset.copy), b.dataset.type), b); });
+  $$('[data-done]').forEach((b) => { b.onclick = () => markDone(stu(b.dataset.done), b.dataset.type); });
+  $$('[data-open]').forEach((b) => { b.onclick = () => go({ name: 'eleve', c: c.id, s: b.dataset.open, back: { name: 'suivi', c: c.id } }); });
+}
+
+/* ----- Fiche élève ----- */
+function renderEleve() {
+  const c = cls(view.c), stu = c?.students.find((t) => t.id === view.s); if (!stu) return go({ name: 'home' });
+  const back = () => go(view.back || { name: 'suivi', c: c.id });
+  const st = status(stu), now = Date.now();
+  const evs = S.events.filter((e) => e.s === stu.id).sort((a, b) => b.t - a.t);
+  const done = S.done.filter((d) => d.s === stu.id);
+  const ws = weekStart(now);
+  const weeks = [...Array(8)].map((_, i) => { const a = ws - (7 - i) * 7 * DAY, b = a + 7 * DAY; const w = evs.filter((e) => e.t >= a && e.t < b); const p = w.filter((e) => motif(e.m).kind === 'pos').length; return { a, p, n: w.length - p }; });
+  const mx = Math.max(1, ...weeks.map((w) => Math.max(w.p, w.n)));
+  const per = view.per || 28;
+  const inPer = evs.filter((e) => per === 'all' || e.t >= now - per * DAY);
+  const counts = {}; for (const e of inPer) counts[e.m] = (counts[e.m] || 0) + 1;
+  let h = bar(esc(stu.name) + ' · ' + esc(c.name), back) + '<main class="wrap">';
+  h += `<div class="box">Cette semaine : <b>${st.negCounted.length} / ${S.settings.neg}</b> remarque(s) comptée(s) · <b>${st.posCounted.length} / ${st.posTh}</b> positif(s)${st.graves.length ? ' · <b style="color:var(--red)">fait grave</b>' : ''}
+    ${st.negAlert || st.posAlert ? `<div class="row">${st.negAlert ? '<button class="btn sm" data-copy="neg">Copier l\'observation</button><button class="btn sm primary" data-done="neg">✔ Observation saisie</button>' : ''}${st.posAlert ? '<button class="btn sm" data-copy="pos">Copier l\'encouragement</button><button class="btn sm primary" data-done="pos">✔ Encouragement saisi</button>' : ''}</div>` : ''}</div>`;
+  h += `<h2>8 dernières semaines</h2><div class="box"><div class="chart">${weeks.map((w) => `<div class="wk"><div class="bars"><i class="bp" style="height:${w.p / mx * 100}%" title="${w.p} positif(s)"></i><i class="bn" style="height:${w.n / mx * 100}%" title="${w.n} remarque(s)"></i></div><span class="lab">${dShort(w.a)}</span></div>`).join('')}</div><span class="small muted">■ <span style="color:var(--green)">positifs</span> · ■ <span style="color:var(--or)">remarques</span>, par semaine (lundi indiqué)</span></div>`;
+  h += `<h2>Par motif <select id="e-per" class="small"><option value="28"${per === 28 ? ' selected' : ''}>4 dernières semaines</option><option value="56"${per === 56 ? ' selected' : ''}>8 dernières semaines</option><option value="all"${per === 'all' ? ' selected' : ''}>depuis le début</option></select></h2>`;
+  h += Object.keys(counts).length ? `<div class="chips">${Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([m, n]) => `<span class="chip">${motif(m).icon} ${esc(motif(m).label)} <b>${n}</b></span>`).join('')}</div>` : '<p class="muted small">Rien sur cette période.</p>';
+  h += `<div class="row"><button class="btn primary" id="e-parents">📄 Fiche pour les parents</button></div>`;
+  // aménagements
+  const amIds = amenableIds();
+  h += `<details class="box"${stu.amen ? ' open' : ''}><summary><b>Aménagements</b> <span class="small muted">(visible par toi seul, jamais sur la fiche parents)</span></summary>
+    <label class="row"><input type="checkbox" id="e-amen"${stu.amen ? ' checked' : ''}> Cet élève a des aménagements (PAP, PPS…)</label>
+    ${stu.amen ? `<p class="small">Motifs notés mais <b>non comptés</b> dans le palier :</p><div class="chips">${S.motifs.filter((m) => m.kind === 'neg' && !m.hidden).map((m) => `<label class="chip"><input type="checkbox" data-am="${m.id}"${stu.amenM.includes(m.id) ? ' checked' : ''}> ${m.icon} ${esc(m.label)}</label>`).join('')}</div>
+    <p class="small muted">Palier positif abaissé à ${S.settings.posAmen}. Rappel « à valoriser » sans positif depuis ${S.settings.valorDays} jours.</p>` : `<p class="small muted">Par défaut, ces motifs ne compteront pas : ${amIds.map((id) => esc(motif(id).label.toLowerCase())).join(', ')}. Tu pourras ajuster.</p>`}
+    <p class="small muted">À faire correspondre à ce qui est prévu dans son PAP ou PPS, en accord avec l'équipe. N'écris jamais de diagnostic.</p></details>`;
+  // historique
+  const items = [...evs.map((e) => ({ t: e.t, e })), ...done.map((d) => ({ t: d.t, d }))].sort((a, b) => b.t - a.t);
+  h += `<h2>Historique</h2><ul class="hist">${items.map((it) => it.e ? `<li><span class="when">${dShort(it.e.t)} ${hm(it.e.t)}</span><span class="what">${motif(it.e.m).icon} ${esc(motif(it.e.m).label)}${isAmenEvent(stu, it.e) ? '<span class="tag am">non compté</span>' : ''}${it.e.n ? ` <span class="muted">— ${esc(it.e.n)}</span>` : ''}</span><button class="x" data-del="${it.e.id}" aria-label="Supprimer">✕</button></li>` : `<li class="done"><span class="when">${dShort(it.d.t)} ${hm(it.d.t)}</span><span class="what">✔ ${it.d.type === 'neg' ? 'Observation' : 'Encouragement'} saisi sur École Directe</span></li>`).join('') || '<li class="muted">Rien pour l\'instant.</li>'}</ul>`;
+  h += '</main>';
+  mount(h, back);
+  $('#e-per').onchange = (e) => { view.per = e.target.value === 'all' ? 'all' : Number(e.target.value); render(); };
+  $('#e-parents').onclick = () => go({ name: 'parents', c: c.id, s: stu.id, back: { ...view } });
+  $('#e-amen').onchange = (e) => { stu.amen = e.target.checked; if (stu.amen) { if (!stu.amenM.length) stu.amenM = amenableIds(); stu.since = Date.now(); } save(); render(); };
+  $$('[data-am]').forEach((b) => { b.onchange = () => { stu.amenM = $$('[data-am]').filter((x) => x.checked).map((x) => x.dataset.am); save(); }; });
+  $$('[data-del]').forEach((b) => { b.onclick = () => { const e = S.events.find((x) => x.id === b.dataset.del); if (e && confirm(`Supprimer « ${motif(e.m).label} » du ${dShort(e.t)} ?`)) { S.events = S.events.filter((x) => x !== e); save(); render(); } }; });
+  $$('[data-copy]').forEach((b) => { b.onclick = () => copyText(edText(stu, b.dataset.copy), b); });
+  $$('[data-done]').forEach((b) => { b.onclick = () => markDone(stu, b.dataset.done); });
+}
+
+/* ----- Fiche pour les parents ----- */
+function renderParents() {
+  const c = cls(view.c), stu = c?.students.find((t) => t.id === view.s); if (!stu) return go({ name: 'home' });
+  const back = () => go(view.back || { name: 'eleve', c: c.id, s: stu.id });
+  const now = Date.now();
+  const per = view.per || 28;
+  const from = per === 'date' ? (view.from ? new Date(view.from + 'T00:00').getTime() : now - 28 * DAY) : per === 'all' ? 0 : now - per * DAY;
+  const withAm = !!view.withAm;
+  const evs = S.events.filter((e) => e.s === stu.id && e.t >= from && (withAm || !isAmenEvent(stu, e))).sort((a, b) => a.t - b.t);
+  const pos = evs.filter((e) => motif(e.m).kind === 'pos'), neg = evs.filter((e) => motif(e.m).kind !== 'pos');
+  const first = evs.length ? evs[0].t : from;
+  const tab = (list, grave, none) => list.length ? `<table><thead><tr><th style="width:130px">Date</th><th>Motif</th><th>Précision</th></tr></thead><tbody>${list.map((e) => `<tr><td>${dFull(e.t)}${grave ? ` à ${hm(e.t)}` : ''}</td><td>${esc(motif(e.m).label)}${motif(e.m).kind === 'grave' ? ' <b>(fait grave)</b>' : ''}</td><td>${esc(e.n || '')}</td></tr>`).join('')}</tbody></table>` : `<p>${none}</p>`;
+  let h = bar('Fiche parents · ' + esc(stu.name), back) + '<main class="wrap">';
+  h += `<div class="noprint box"><div class="row"><label>Période : <select id="p-per"><option value="28"${per === 28 ? ' selected' : ''}>4 dernières semaines</option><option value="56"${per === 56 ? ' selected' : ''}>8 dernières semaines</option><option value="date"${per === 'date' ? ' selected' : ''}>depuis une date…</option><option value="all"${per === 'all' ? ' selected' : ''}>depuis le début</option></select></label>${per === 'date' ? `<input type="date" id="p-from" value="${esc(view.from || '')}">` : ''}</div>
+    ${stu.amen ? `<label class="row small"><input type="checkbox" id="p-am"${withAm ? ' checked' : ''}> Inclure les remarques non comptées (aménagements)</label>` : ''}
+    <div class="row"><button class="btn primary" id="p-print">🖨 Imprimer ou enregistrer en PDF</button></div>
+    <p class="small muted">Tu peux aussi montrer cette page directement sur l'appareil : elle ne contient que cet élève.</p></div>`;
+  h += `<div class="paper"><div class="ph"><span>${esc(S.settings.etab || '')}</span><span>Le ${dFull(now)}</span></div>
+    <h2>Suivi en classe — ${esc(stu.name)} (${esc(c.name)})</h2>
+    <div class="ph"><span>Période : du ${dFull(Math.max(from, first))} au ${dFull(now)}</span><span>${S.settings.prof ? 'Enseignant·e : ' + esc(S.settings.prof) : ''}</span></div>
+    <h3>Points positifs (${pos.length})</h3>${tab(pos, false, 'Aucun.')}
+    <h3>Remarques (${neg.length})</h3>${tab(neg, true, 'Aucune.')}
+    <p class="pf">Faits notés en classe au fil des cours. Ce document ne concerne que votre enfant.</p></div>`;
+  h += '</main>';
+  mount(h, back);
+  $('#p-per').onchange = (e) => { const v = e.target.value; view.per = v === 'all' || v === 'date' ? v : Number(v); render(); };
+  $('#p-from')?.addEventListener('change', (e) => { view.from = e.target.value; render(); });
+  $('#p-am')?.addEventListener('change', (e) => { view.withAm = e.target.checked; render(); });
+  $('#p-print').onclick = () => { fileOpUntil = Date.now() + 120000; window.print(); };
+}
+
+/* ----- Classe : élèves, séparations ----- */
+function parseNames(txt) { return txt.split(/[\n\r;]+|,(?=\s*\S)/).map((x) => x.replace(/\s+/g, ' ').trim()).filter(Boolean); }
+function renderClasse() {
+  if (!view.c) {
+    let h = bar('Nouvelle classe', () => go({ name: 'home' })) + `<main class="wrap"><form id="nc"><label class="f"><span>Nom de la classe</span><input type="text" id="nc-name" placeholder="6e A, Pilates…" required></label>
+      <label class="f"><span>Prénoms des élèves</span><textarea id="nc-list" rows="10" placeholder="Un prénom par ligne (tu peux coller une liste).&#10;Si deux élèves ont le même prénom, ajoute l'initiale du nom."></textarea></label>
+      <button class="btn primary">Créer la classe</button></form></main>`;
+    mount(h, () => go({ name: 'home' }));
+    $('#nc').onsubmit = (e) => {
+      e.preventDefault();
+      const name = $('#nc-name').value.trim(); if (!name) return;
+      const c = { id: uid(), name, created: Date.now(), students: parseNames($('#nc-list').value).map((n) => ({ id: uid(), name: n, amen: false, amenM: [] })), sep: [] };
+      S.classes.push(c); save();
+      go({ name: 'lesson', c: c.id, r: S.rooms[0]?.id || '' });
+    };
+    return;
+  }
+  const c = cls(view.c); if (!c) return go({ name: 'home' });
+  const back = () => go({ name: 'lesson', c: c.id, r: c.lastRoom || S.rooms[0]?.id || '' });
+  const studs = c.students.slice().sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  const nm = (id) => c.students.find((t) => t.id === id)?.name || '?';
+  let h = bar('Classe · ' + esc(c.name), back) + '<main class="wrap">';
+  h += `<label class="f"><span>Nom de la classe</span><input type="text" id="c-name" value="${esc(c.name)}"></label>`;
+  h += `<h2>Élèves (${c.students.length})</h2><div class="box">${studs.map((t) => `<div class="row" style="margin:4px 0"><input type="text" data-ren="${t.id}" value="${esc(t.name)}" style="flex:1"><button class="btn sm" data-fiche="${t.id}">Fiche</button><button class="btn sm danger" data-rm="${t.id}" aria-label="Retirer">✕</button></div>`).join('') || '<p class="muted small">Aucun élève.</p>'}
+    <label class="f"><span>Ajouter des élèves</span><textarea id="c-add" rows="3" placeholder="Un prénom par ligne"></textarea></label><button class="btn" id="c-addb">Ajouter</button></div>`;
+  h += `<h2>Élèves à séparer</h2><div class="box"><p class="small muted">Utilisé par le placement automatique.</p>${c.sep.map(([a, b], i) => `<div class="row" style="margin:4px 0"><span>${esc(nm(a))} ↔ ${esc(nm(b))}</span><button class="btn sm danger" data-sep="${i}">✕</button></div>`).join('')}
+    <div class="row"><select id="s-a">${studs.map((t) => `<option value="${t.id}">${esc(t.name)}</option>`).join('')}</select> ↔ <select id="s-b">${studs.map((t) => `<option value="${t.id}">${esc(t.name)}</option>`).join('')}</select><button class="btn sm" id="s-add">Ajouter</button></div></div>`;
+  h += `<h2>Supprimer</h2><button class="btn danger" id="c-del">Supprimer la classe et toutes ses remarques</button>`;
+  h += '</main>';
+  mount(h, back);
+  $('#c-name').onchange = (e) => { const v = e.target.value.trim(); if (v) { c.name = v; save(); } };
+  $$('[data-ren]').forEach((i) => { i.onchange = () => { const t = c.students.find((x) => x.id === i.dataset.ren); const v = i.value.trim(); if (t && v) { t.name = v; save(); } }; });
+  $$('[data-fiche]').forEach((b) => { b.onclick = () => go({ name: 'eleve', c: c.id, s: b.dataset.fiche, back: { name: 'classe', c: c.id } }); });
+  $$('[data-rm]').forEach((b) => { b.onclick = () => {
+    const t = c.students.find((x) => x.id === b.dataset.rm); if (!t || !confirm(`Retirer ${t.name} de la classe ? Ses remarques seront effacées.`)) return;
+    c.students = c.students.filter((x) => x !== t); S.events = S.events.filter((e) => e.s !== t.id); S.done = S.done.filter((d) => d.s !== t.id);
+    c.sep = c.sep.filter((p) => !p.includes(t.id));
+    for (const k of Object.keys(S.plans)) if (k.startsWith(c.id + '|')) { const sp = seatOf(S.plans[k], t.id); if (sp) delete S.plans[k][sp]; }
+    save(); render();
+  }; });
+  $('#c-addb').onclick = () => { const names = parseNames($('#c-add').value); if (!names.length) return; for (const n of names) c.students.push({ id: uid(), name: n, amen: false, amenM: [] }); save(); render(); toast(`${plural(names.length, 'élève ajouté', 'élèves ajoutés')}.`); };
+  $('#s-add').onclick = () => { const a = $('#s-a').value, b = $('#s-b').value; if (!a || !b || a === b || c.sep.some((p) => p.includes(a) && p.includes(b))) return; c.sep.push([a, b]); save(); render(); };
+  $$('[data-sep]').forEach((b) => { b.onclick = () => { c.sep.splice(Number(b.dataset.sep), 1); save(); render(); }; });
+  $('#c-del').onclick = () => {
+    if (!confirm(`Supprimer la classe ${c.name}, ses plans et toutes ses remarques ?`)) return;
+    const ids = new Set(c.students.map((t) => t.id));
+    S.classes = S.classes.filter((x) => x !== c); S.events = S.events.filter((e) => !ids.has(e.s)); S.done = S.done.filter((d) => !ids.has(d.s));
+    for (const k of Object.keys(S.plans)) if (k.startsWith(c.id + '|')) delete S.plans[k];
+    save(); go({ name: 'home' });
+  };
+}
+
+/* ----- Salles ----- */
+function renderSalles() {
+  let h = bar('Mes salles', () => go({ name: 'home' })) + '<main class="wrap">';
+  h += S.rooms.length ? '<div class="cards">' + S.rooms.map((r) => `<button class="card" data-r="${r.id}"><b>${esc(r.name)}</b><span class="muted small">${ROOM_TYPES[r.type]} · ${roomSeats(r).length} places</span></button>`).join('') + '</div>' : '<div class="empty">Aucune salle pour l\'instant.</div>';
+  h += '<div class="row"><button class="btn primary" id="r-new">＋ Nouvelle salle</button></div><p class="small muted">Une salle sert à toutes tes classes : chaque classe a son propre plan dans chaque salle.</p></main>';
+  mount(h, () => go({ name: 'home' }));
+  $$('[data-r]').forEach((b) => { b.onclick = () => go({ name: 'salle', r: b.dataset.r }); });
+  $('#r-new').onclick = () => go({ name: 'salle', r: null });
+}
+function renderSalle() {
+  let room = S.rooms.find((r) => r.id === view.r);
+  const isNew = !room;
+  if (isNew) { room = view.draft || (view.draft = { id: uid(), name: '', type: 'rows', p: { ...ROOM_DEF.rows } }); }
+  const back = () => go(view.back || { name: 'salles' });
+  const seats = roomSeats(room);
+  const W = Math.max(...seats.map((s) => s.x)) + 1, H = Math.max(...seats.map((s) => s.y)) + 1;
+  const num = (k, label, min, max) => `<label>${label} <input type="number" data-p="${k}" min="${min}" max="${max}" value="${room.p[k]}"></label>`;
+  const fields = room.type === 'rows' ? num('rows', 'Rangées', 1, 12) + num('tables', 'Tables par rangée', 1, 8) + num('places', 'Places par table', 1, 4)
+    : room.type === 'islands' ? num('islands', 'Îlots', 1, 12) + num('size', 'Places par îlot', 2, 8) + num('perRow', 'Îlots par ligne', 1, 6)
+    : num('left', 'Places côté gauche', 0, 16) + num('back', 'Places au fond', 0, 20) + num('right', 'Places côté droit', 0, 16);
+  let h = bar(isNew ? 'Nouvelle salle' : 'Salle · ' + esc(room.name), back) + '<main class="wrap">';
+  h += `<label class="f"><span>Nom</span><input type="text" id="r-name" value="${esc(room.name)}" placeholder="B12, Labo…"></label>
+    <div class="row">${Object.entries(ROOM_TYPES).map(([k, v]) => `<label class="chip"><input type="radio" name="rt" value="${k}"${room.type === k ? ' checked' : ''}> ${v}</label>`).join('')}</div>
+    <div class="row">${fields}</div>
+    <p class="small muted">${seats.length} places · vue depuis le fond de la salle (tableau en haut).</p>
+    <div class="plan-scroll"><div class="plan-wrap" style="width:max(100%, ${Math.round(W * 44)}px)"><div class="board">▲ Tableau / bureau ▲</div><div class="plan" style="aspect-ratio:${W} / ${(H * 0.62).toFixed(2)}">${seats.map((s) => `<div class="seat occ" style="left:${s.x / W * 100}%;top:${s.y / H * 100}%;width:${100 / W}%;height:${100 / H}%"><div class="seat-in"></div></div>`).join('')}</div></div></div>
+    <div class="row"><button class="btn primary" id="r-save">${isNew ? 'Créer la salle' : 'Enregistrer'}</button>${isNew ? '' : '<button class="btn danger" id="r-del">Supprimer la salle</button>'}</div>
+    ${isNew ? '' : '<p class="small muted">Si tu enlèves des places, les élèves qui y étaient repassent dans « pas encore placés ».</p>'}</main>`;
+  mount(h, back);
+  const work = room; // nouvelle salle : brouillon ; salle existante : modifiée directement
+  $('#r-name').oninput = (e) => { work.name = e.target.value; };
+  $$('input[name=rt]').forEach((r) => { r.onchange = () => { work.type = r.value; work.p = { ...ROOM_DEF[r.value] }; if (!isNew) save(); render(); }; });
+  $$('[data-p]').forEach((i) => { i.onchange = () => { work.p[i.dataset.p] = Math.max(Number(i.min), Math.min(Number(i.max), Math.round(Number(i.value) || 0))); if (!isNew) save(); render(); }; });
+  $('#r-save').onclick = () => {
+    work.name = $('#r-name').value.trim() || 'Ma salle';
+    if (isNew) S.rooms.push(work);
+    const ids = new Set(roomSeats(work).map((s) => s.id));
+    for (const k of Object.keys(S.plans)) if (k.endsWith('|' + work.id)) for (const sid of Object.keys(S.plans[k])) if (!ids.has(sid)) delete S.plans[k][sid];
+    save(); toast('Salle enregistrée.');
+    go(view.back ? { ...view.back, r: work.id } : { name: 'salles' });
+  };
+  $('#r-del')?.addEventListener('click', () => {
+    if (!confirm(`Supprimer la salle ${room.name} et les plans de classe qui vont avec ?`)) return;
+    S.rooms = S.rooms.filter((r) => r !== room);
+    for (const k of Object.keys(S.plans)) if (k.endsWith('|' + room.id)) delete S.plans[k];
+    save(); go({ name: 'salles' });
+  });
+}
+
+/* ----- Motifs, paliers, fiche ----- */
+function renderReglages() {
+  const s = S.settings;
+  const num = (k, min, max) => `<input type="number" data-set="${k}" min="${min}" max="${max}" value="${s[k]}">`;
+  let h = bar('Motifs et paliers', () => go({ name: 'home' })) + '<main class="wrap">';
+  h += `<h2>Paliers</h2><div class="box">
+    <p>🔴 Observation à saisir dès ${num('neg', 1, 20)} remarques dans la semaine (remise à zéro le lundi), ou dès un fait grave.</p>
+    <p>🟢 Encouragement à saisir dès ${num('pos', 1, 30)} positifs en ${num('posDays', 3, 60)} jours.</p>
+    <p>Avec aménagements : encouragement dès ${num('posAmen', 1, 30)} positifs ; « à valoriser » sans positif depuis ${num('valorDays', 1, 30)} jours.</p>
+    <p>👀 Élèves « pas vus » : rien depuis ${num('invisibleDays', 3, 60)} jours.</p></div>`;
+  h += `<h2>Plan de classe</h2><div class="box"><label class="row"><input type="radio" name="vw" value="back"${s.view !== 'desk' ? ' checked' : ''}> Vu depuis le fond (tableau en haut)</label><label class="row"><input type="radio" name="vw" value="desk"${s.view === 'desk' ? ' checked' : ''}> Vu depuis le bureau (tableau en bas)</label></div>`;
+  h += `<h2>Fiche parents</h2><div class="box"><label class="f"><span>Établissement</span><input type="text" data-txt="etab" value="${esc(s.etab)}" placeholder="Collège…"></label><label class="f"><span>Ton nom</span><input type="text" data-txt="prof" value="${esc(s.prof)}" placeholder="M. / Mme …"></label></div>`;
+  h += '<h2>Motifs</h2>';
+  for (const [k, t] of KINDS) {
+    h += `<div class="box"><h3>${t}</h3>${S.motifs.filter((m) => m.kind === k && !m.hidden).map((m) => `<div class="row" style="margin:4px 0"><input type="text" data-icon="${m.id}" value="${esc(m.icon)}" style="width:52px;text-align:center"><input type="text" data-label="${m.id}" value="${esc(m.label)}" style="flex:1;min-width:140px">${k === 'neg' ? `<label class="small"><input type="checkbox" data-amen="${m.id}"${m.amen ? ' checked' : ''}> aménageable</label>` : ''}<button class="btn sm danger" data-hide="${m.id}" aria-label="Retirer">✕</button></div>`).join('')}
+      <div class="row"><input type="text" data-newicon="${k}" placeholder="🙂" style="width:52px;text-align:center"><input type="text" data-newlabel="${k}" placeholder="Nouveau motif" style="flex:1;min-width:140px"><button class="btn sm" data-add="${k}">Ajouter</button></div></div>`;
+  }
+  h += '<p class="small muted">« Aménageable » : coché par défaut quand tu actives les aménagements d\'un élève. Un motif retiré reste visible dans l\'historique.</p></main>';
+  mount(h, () => go({ name: 'home' }));
+  $$('[data-set]').forEach((i) => { i.onchange = () => { s[i.dataset.set] = Math.max(Number(i.min), Math.min(Number(i.max), Math.round(Number(i.value) || Number(i.min)))); i.value = s[i.dataset.set]; save(); }; });
+  $$('[data-txt]').forEach((i) => { i.onchange = () => { s[i.dataset.txt] = i.value.trim(); save(); }; });
+  $$('input[name=vw]').forEach((r) => { r.onchange = () => { s.view = r.value; save(); }; });
+  $$('[data-icon]').forEach((i) => { i.onchange = () => { motif(i.dataset.icon).icon = i.value.trim() || '•'; save(); }; });
+  $$('[data-label]').forEach((i) => { i.onchange = () => { const v = i.value.trim(); if (v) { motif(i.dataset.label).label = v; save(); } }; });
+  $$('[data-amen]').forEach((i) => { i.onchange = () => { motif(i.dataset.amen).amen = i.checked; save(); }; });
+  $$('[data-hide]').forEach((b) => { b.onclick = () => { const m = motif(b.dataset.hide); if (!confirm(`Retirer le motif « ${m.label} » des boutons ?`)) return; if (S.events.some((e) => e.m === m.id)) m.hidden = true; else S.motifs = S.motifs.filter((x) => x !== m); save(); render(); }; });
+  $$('[data-add]').forEach((b) => { b.onclick = () => { const k = b.dataset.add; const label = $(`[data-newlabel="${k}"]`).value.trim(); if (!label) return; S.motifs.push({ id: uid(), label, icon: $(`[data-newicon="${k}"]`).value.trim() || '•', kind: k, amen: false }); save(); render(); }; });
+}
+
+/* ----- Sécurité, sauvegarde, effacement ----- */
+async function exportBackup() {
+  await flush();
+  const now = Date.now();
+  S.lastBackup = now; await persist();
+  const blob = new Blob([JSON.stringify({ app: 'maclasse', v: 1, date: now, keys: getKeys(), data: JSON.parse(ls.get(LS_DATA)) })], { type: 'application/json' });
+  const d = new Date(now);
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `maclasse-sauvegarde-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.json`;
+  fileOpUntil = Date.now() + 60000;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  toast('Sauvegarde créée. Range le fichier sur ton ordinateur ou une clé USB : il est chiffré avec ton code.');
+  if (view.name === 'home' || view.name === 'securite') render();
+}
+function importFile(e) {
+  const f = e.target.files?.[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = async () => {
+    let o; try { o = JSON.parse(r.result); } catch (_) { o = null; }
+    if (!o || o.app !== 'maclasse' || !o.keys?.w1 || !o.data?.ct) { alert('Ce fichier n\'est pas une sauvegarde de Ma classe.'); return; }
+    if (hasKeys() && !confirm(`Remplacer toutes les données de cet appareil par la sauvegarde du ${dFull(o.date)} ? Il faudra le code utilisé au moment de cette sauvegarde.`)) return;
+    if (S) { await flush(); }
+    ls.set(LS_KEYS, JSON.stringify(o.keys)); ls.set(LS_DATA, JSON.stringify(o.data)); ls.del(LS_TRY);
+    S = null; DK = null; RAW = null; closeSheet();
+    view = { name: 'home', msg: `Sauvegarde du ${dFull(o.date)} restaurée. Entre le code de cette sauvegarde.` };
+    render();
+  };
+  r.readAsText(f);
+}
+function renderSecurite() {
+  const s = S.settings;
+  let h = bar('Code et sauvegarde', () => go({ name: 'home' })) + '<main class="wrap">';
+  h += `<h2>💾 Sauvegarde</h2><div class="box"><p class="small">${S.lastBackup ? `Dernière sauvegarde : ${dLong(S.lastBackup)}.` : 'Aucune sauvegarde pour l\'instant.'} Si l'appareil est perdu ou réinitialisé, c'est le seul moyen de tout retrouver. Le fichier est chiffré : il faut ton code pour l'ouvrir.</p>
+    <div class="row"><button class="btn primary" id="x-save">Sauvegarder maintenant</button><label class="btn">Restaurer un fichier<input type="file" id="x-file" accept=".json,application/json" hidden></label></div></div>`;
+  h += `<h2>🔒 Verrouillage</h2><div class="box"><label>Écran neutre après <select id="x-lock">${[1, 2, 3, 5, 10, 0].map((m) => `<option value="${m}"${s.lockMin === m ? ' selected' : ''}>${m ? m + ' min sans toucher l\'écran' : 'jamais (déconseillé)'}</option>`).join('')}</select></label>
+    <p class="small muted">L'outil se verrouille aussi dès que tu changes d'appli ou que l'écran s'éteint, et avec 🔒 en haut.</p></div>`;
+  h += `<h2>🔑 Changer de code</h2><div class="box"><form id="x-code"><label class="f"><span>Code actuel</span><input type="password" id="x-c0" autocomplete="current-password"></label><label class="f"><span>Nouveau code (6 caractères minimum)</span><input type="password" id="x-c1" autocomplete="new-password"></label><label class="f"><span>Retape le nouveau code</span><input type="password" id="x-c2" autocomplete="new-password"></label><p class="small" id="x-msg" style="color:var(--red)"></p><button class="btn">Changer</button></form>
+    <p class="small muted">Code de secours perdu ? <button class="link small" id="x-rec">En créer un nouveau</button> (l'ancien ne marchera plus).</p></div>`;
+  h += `<h2>🗑 Fin d'année</h2><div class="box"><p class="small">Le RGPD demande de ne pas garder ces notes plus longtemps que nécessaire. Fais une dernière sauvegarde si tu en as besoin, puis efface.</p>
+    <div class="row"><button class="btn danger" id="x-ev">Effacer toutes les remarques et positifs</button><button class="btn danger" id="x-all">Tout effacer (classes, salles, code…)</button></div></div>`;
+  h += `<h2>📱 Installer</h2><div class="box small"><p>Ajoute l'outil à l'écran d'accueil : dans le menu du navigateur, « Ajouter à l'écran d'accueil » (Android) ou bouton Partager → « Sur l'écran d'accueil » (iPad, iPhone). Il fonctionne ensuite sans internet.</p><p class="muted">Version ${APP_VERSION}</p></div>`;
+  h += '</main>';
+  mount(h, () => go({ name: 'home' }));
+  $('#x-save').onclick = exportBackup;
+  $('#x-file').onclick = () => { fileOpUntil = Date.now() + 120000; };
+  $('#x-file').onchange = importFile;
+  $('#x-lock').onchange = (e) => { s.lockMin = Number(e.target.value); save(); bump(); };
+  $('#x-code').onsubmit = async (e) => {
+    e.preventDefault();
+    const m = $('#x-msg'), c1 = $('#x-c1').value.trim();
+    if (c1.length < 6) { m.textContent = 'Le nouveau code doit faire au moins 6 caractères.'; return; }
+    if (c1 !== $('#x-c2').value.trim()) { m.textContent = 'Les deux nouveaux codes ne sont pas identiques.'; return; }
+    m.textContent = 'Vérification…';
+    const keys = getKeys();
+    try { await unwrapWith($('#x-c0').value.trim(), keys.w1); } catch (_) { m.textContent = 'Le code actuel est incorrect.'; return; }
+    keys.w1 = await wrapWith(c1, RAW); ls.set(LS_KEYS, JSON.stringify(keys));
+    m.textContent = ''; e.target.reset(); toast('Code changé. Pense à refaire une sauvegarde (les anciennes gardent l\'ancien code).');
+  };
+  $('#x-rec').onclick = async () => {
+    if (!confirm('Créer un nouveau code de secours ? L\'ancien ne fonctionnera plus.')) return;
+    const rec = genRecovery(); const keys = getKeys(); keys.w2 = await wrapWith(normRecovery(rec), RAW); ls.set(LS_KEYS, JSON.stringify(keys));
+    openSheet(`<div class="sheet-h"><div><b>Nouveau code de secours</b></div><button class="ib" id="rc-x">✕</button></div><p>Note-le sur papier et range-le chez toi.</p><div class="recov">${rec}</div>`, (o) => { $('#rc-x', o).onclick = closeSheet; });
+  };
+  $('#x-ev').onclick = () => { if (!confirm('Effacer toutes les remarques et tous les positifs de toutes les classes ? (Les classes, salles et plans restent.)')) return; S.events = []; S.done = []; save(); toast('Remarques effacées.'); render(); };
+  $('#x-all').onclick = () => { if (!confirm('Tout effacer sur cet appareil ? Classes, salles, plans, remarques et code. C\'est définitif.')) return; if (!confirm('Vraiment tout effacer ?')) return; ls.del(LS_KEYS); ls.del(LS_DATA); ls.del(LS_TRY); S = null; DK = null; RAW = null; view = { name: 'home' }; render(); };
+}
+
+/* ---------- Démarrage ---------- */
+if (!window.crypto?.subtle) {
+  app.innerHTML = '<div class="lock"><div class="box"><h2>Navigateur non compatible</h2><p>Ouvre cet outil depuis son adresse en <b>https://</b> avec un navigateur récent (Chrome, Safari, Firefox, Edge).</p></div></div>';
+} else {
+  render();
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => { /* hors ligne indisponible */ });
+}
+</script>
+</body>
+</html>
