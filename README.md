@@ -7,7 +7,8 @@ Outil pour tablette ou téléphone : en deux touches, tu notes une remarque ou u
 - **Placer les élèves** : ✏️ Modifier le plan → « Placer les élèves ». La liste des élèves est à côté du plan : glisse un prénom sur une place, d'une place à une autre pour échanger deux élèves, ou dans la liste pour le retirer. Le placement automatique met les élèves avec aménagements devant et sépare ceux qu'il faut séparer.
 - **Bouger les tables depuis le cours** : ✏️ → « Bouger les tables ». Les élèves suivent leur table. Une salle sert à toutes tes classes, et chaque classe a son propre plan dans chaque salle.
 - **Saisie** : tu touches un élève, puis un motif (remarques, positifs, faits graves), avec une précision facultative. Le bouton « Annuler » rattrape une erreur.
-- **Plusieurs élèves à la fois** : ☑ Plusieurs, tu touches les élèves concernés (ou « Tous »), puis « Noter… » et le motif. Pratique pour un oubli de matériel ou une participation collective. « Annuler » annule tout le groupe.
+- **Motif d'abord, puis les élèves** : tous les motifs sont affichés au-dessus du plan. Touche un motif (il passe en bleu), puis chaque élève concerné : c'est noté à chaque fois, sans autre étape. « ✕ Arrêter » pour revenir à la saisie normale.
+- **Jauge de classe** (🏆) : chaque point positif fait avancer la jauge de 1. Chaque remarque la fait reculer (½ point par défaut, réglable : 0, ½ ou 1). Tu peux ajouter des bonus pour toute la classe (＋1, ＋3). L'écran affiche l'objectif, la récompense et le ratio positifs / remarques, sans aucun prénom : il peut être projeté. Quand la jauge est pleine, « Récompense donnée » lance une nouvelle manche.
 - **Paliers** (modifiables dans ⚙️) :
   - 3 remarques dans la semaine, ou un fait grave : **observation à saisir sur École Directe**. Remise à zéro le lundi.
   - 5 positifs en 14 jours : **encouragement à saisir**.

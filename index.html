@@ -123,6 +123,31 @@ label.f > span { display: block; font-weight: 600; margin-bottom: 4px; }
 #toast { bottom: max(16px, env(safe-area-inset-bottom)); }
 body:has(.multibar) #toast { bottom: 150px; }
 
+/* palette de motifs */
+.palette-wrap { position: sticky; top: 60px; z-index: 14; background: var(--bg); padding: 4px 0 6px; margin-bottom: 6px; }
+.palette { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: thin; }
+.pm { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; border: 1.5px solid var(--line); border-radius: 99px; padding: 6px 12px 6px 9px; font-weight: 650; font-size: .88rem; cursor: pointer; background: var(--card); white-space: nowrap; }
+.pm span { font-size: 1.1rem; }
+.pm-neg { background: #fffaf2; } .pm-pos { background: var(--green-soft); border-color: #b9dcc5; } .pm-grave { background: var(--red-soft); border-color: #eab7b2; }
+.pm.on { background: var(--blue); color: #fff; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-soft); }
+.pm-sep { flex: 0 0 1px; background: var(--line); margin: 4px 2px; }
+@media (min-width: 760px) { .palette { flex-wrap: wrap; overflow: visible; } .pm { padding: 5px 11px 5px 8px; font-size: .85rem; } }
+.pm-hint { font-size: .88rem; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-height: 30px; }
+.palette-wrap.active .pm-hint { background: var(--blue-soft); border-radius: 10px; padding: 4px 10px; color: #1d3f73; }
+.palette-wrap.active ~ * .seat.occ .seat-in, .palette-wrap.active ~ .list .li { cursor: crosshair; }
+/* jauge */
+.center { text-align: center; justify-content: center; }
+.gauge-card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 26px 22px; text-align: center; margin: 14px 0; }
+.gauge-card.full { border-color: var(--green); box-shadow: 0 0 0 4px var(--green-soft); }
+.gauge-title { font-size: 1.1rem; font-weight: 700; color: var(--muted); }
+.gauge-big { font-size: 1.4rem; margin: 6px 0 14px; }
+.gauge-big b { font-size: 3.6rem; font-weight: 800; color: var(--accent); }
+.gauge { height: 34px; border-radius: 99px; background: var(--soft); overflow: hidden; box-shadow: inset 0 0 0 1.5px var(--line); }
+.gauge i { display: block; height: 100%; background: linear-gradient(90deg, #4f9d6d, #2f6b4f); border-radius: 99px; transition: width .4s; }
+.gauge-card.full .gauge i { background: linear-gradient(90deg, #f2b84b, #e08e1b); }
+.gauge-reward { font-size: 1.15rem; margin-top: 12px; }
+.gauge-detail { color: var(--muted); font-size: .92rem; margin-top: 8px; }
+
 /* vue liste */
 .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .li { display: flex; justify-content: space-between; align-items: center; gap: 6px; border: 1.5px solid var(--line); background: var(--card); border-radius: 12px; padding: 10px 12px; cursor: pointer; text-align: left; }
@@ -226,7 +251,7 @@ table.t tr.click { cursor: pointer; }
    Toutes les données restent sur l'appareil, chiffrées (AES-GCM) avec une clé
    protégée par le code du professeur (PBKDF2). Rien n'est envoyé sur internet.
    ========================================================= */
-const APP_VERSION = '2026-10-15.3';
+const APP_VERSION = '2026-10-15.4';
 const LS_KEYS = 'maclasse-cles', LS_DATA = 'maclasse-donnees', LS_TRY = 'maclasse-essais';
 const DAY = 864e5;
 const $ = (s, r = document) => r.querySelector(s);
@@ -591,7 +616,7 @@ function render() {
   if (!hasKeys()) return renderSetup();
   if (!S) return renderLock();
   bump();
-  const r = { home: renderHome, lesson: renderLesson, suivi: renderSuivi, eleve: renderEleve, parents: renderParents, classe: renderClasse, salles: renderSalles, salle: renderSalle, reglages: renderReglages, securite: renderSecurite }[view.name];
+  const r = { home: renderHome, lesson: renderLesson, jauge: renderJauge, suivi: renderSuivi, eleve: renderEleve, parents: renderParents, classe: renderClasse, salles: renderSalles, salle: renderSalle, reglages: renderReglages, securite: renderSecurite }[view.name];
   (r || renderHome)();
 }
 
@@ -720,7 +745,7 @@ function renderLesson() {
   let h = bar(esc(c.name), () => go({ name: 'home' })) + `<main class="wrap wide${mode ? ' edit' : ''}">`;
   h += `<div class="subbar"><select id="l-room" aria-label="Salle">${S.rooms.map((r) => `<option value="${r.id}"${room && r.id === room.id ? ' selected' : ''}>🏫 ${esc(r.name)}</option>`).join('')}<option value=""${room ? '' : ' selected'}>☰ Liste (sans plan)</option></select>`;
   if (mode) h += `<div class="seg"><button class="${mode === 'eleves' ? 'on' : ''}" data-mode="eleves">👥 Placer les élèves</button><button class="${mode === 'tables' ? 'on' : ''}" data-mode="tables">🪑 Bouger les tables</button></div><button class="btn sm primary" id="l-done">✔ Terminé</button>`;
-  else h += `${room ? '<button class="btn sm" id="l-edit">✏️ Modifier le plan</button>' : ''}<button class="btn sm" id="l-suivi">📋 Suivi${(() => { const a = classAlerts(c); return a.neg || a.pos ? ` <span class="pill ${a.neg ? 'red' : 'green'}">${a.neg + a.pos}</span>` : ''; })()}</button><button class="btn sm${view.multi ? ' primary' : ''}" id="l-multi" title="Noter plusieurs élèves à la fois">☑ Plusieurs</button><button class="btn sm" id="l-class" title="Élèves de la classe">👥</button>`;
+  else h += `${room ? '<button class="btn sm" id="l-edit">✏️ Modifier le plan</button>' : ''}<button class="btn sm" id="l-suivi">📋 Suivi${(() => { const a = classAlerts(c); return a.neg || a.pos ? ` <span class="pill ${a.neg ? 'red' : 'green'}">${a.neg + a.pos}</span>` : ''; })()}</button><button class="btn sm" id="l-jauge" title="Jauge de classe">🏆 ${gaugeLabel(c)}</button><button class="btn sm" id="l-class" title="Élèves de la classe">👥</button>`;
   h += '</div>';
   if (mode === 'tables') {
     h += tablesEditorHTML(room) + '</main>';
@@ -728,6 +753,7 @@ function renderLesson() {
     bindLessonBar(c, room);
     return bindTablesEditor(room);
   }
+  if (!mode && c.students.length) h += paletteHTML();
   if (!c.students.length) h += `<div class="empty">Cette classe n'a pas encore d'élèves. <button class="btn sm" id="l-add">Ajouter les prénoms</button></div>`;
   else if (room) {
     const key = planKey(c, room), plan = S.plans[key] || {};
@@ -758,9 +784,13 @@ function renderLesson() {
   bindLessonBar(c, room);
   app.onpointerdown = null;
   if (mode === 'eleves') return bindPlanEdit(c, room);
-  $('#l-multi')?.addEventListener('click', () => { view.multi = !view.multi; view.sel = []; render(); });
-  if (view.multi && c.students.length) return bindMulti(c);
-  $$('[data-s]', app).forEach((el) => { el.onclick = () => openStudent(c, c.students.find((t) => t.id === el.dataset.s)); });
+  $('#l-jauge')?.addEventListener('click', () => go({ name: 'jauge', c: c.id }));
+  $$('[data-pm]').forEach((b) => { b.onclick = () => { view.pm = view.pm === b.dataset.pm ? null : b.dataset.pm; render(); }; });
+  $('#pm-stop')?.addEventListener('click', () => { view.pm = null; render(); });
+  $$('[data-s]', app).forEach((el) => { el.onclick = () => {
+    const stu = c.students.find((t) => t.id === el.dataset.s);
+    if (view.pm && S.motifs.some((m) => m.id === view.pm && !m.hidden)) record(c, stu, view.pm, ''); else openStudent(c, stu);
+  }; });
 }
 function bindLessonBar(c, room) {
   $('#l-room').onchange = (e) => go({ name: 'lesson', c: c.id, r: e.target.value, edit: view.edit && e.target.value ? view.edit : '' });
@@ -786,33 +816,11 @@ function openStudent(c, stu) {
     $$('.mb', o).forEach((b) => { b.onclick = () => record(c, stu, b.dataset.m, $('#sh-note', o).value.trim()); });
   });
 }
-/* ----- Noter plusieurs élèves à la fois ----- */
-function bindMulti(c) {
-  const sel = new Set(view.sel || []);
-  const bar = document.createElement('div'); bar.className = 'multibar';
-  bar.innerHTML = `<span><b id="mb-n"></b></span><button class="btn sm" id="mb-all">Tous</button><button class="btn sm" id="mb-none">Aucun</button><button class="btn sm primary" id="mb-go">Noter…</button><button class="btn sm" id="mb-x">Fermer</button>`;
-  $('main', app).appendChild(bar); $('main', app).classList.add('has-multibar');
-  const refresh = () => {
-    view.sel = [...sel];
-    $$('[data-s]', app).forEach((el) => el.classList.toggle('picked', sel.has(el.dataset.s)));
-    $('#mb-n').textContent = sel.size ? `${plural(sel.size, 'élève sélectionné', 'élèves sélectionnés')}` : 'Touche les élèves concernés';
-    $('#mb-go').disabled = !sel.size;
-  };
-  $$('[data-s]', app).forEach((el) => { el.onclick = () => { const id = el.dataset.s; if (sel.has(id)) sel.delete(id); else sel.add(id); refresh(); }; });
-  $('#mb-all').onclick = () => { c.students.forEach((t) => sel.add(t.id)); refresh(); };
-  $('#mb-none').onclick = () => { sel.clear(); refresh(); };
-  $('#mb-x').onclick = () => { view.multi = false; view.sel = []; render(); };
-  $('#mb-go').onclick = () => {
-    const studs = c.students.filter((t) => sel.has(t.id));
-    const names = studs.map((t) => t.name).sort((a, b) => a.localeCompare(b, 'fr'));
-    openSheet(`<div class="sheet-h"><div><b>${plural(studs.length, 'élève')}</b><div class="small muted">${esc(names.join(', '))}</div></div><button class="ib" id="sh-x" aria-label="Fermer">✕</button></div>
-      <input type="text" class="note" id="sh-note" maxlength="160" placeholder="Précision commune (facultatif)">
-      ${motifButtons()}`, (o) => {
-      $('#sh-x', o).onclick = closeSheet;
-      $$('.mb', o).forEach((b) => { b.onclick = () => { view.multi = false; view.sel = []; recordMany(c, studs, b.dataset.m, $('#sh-note', o).value.trim()); }; });
-    });
-  };
-  refresh();
+/* ----- Palette : on choisit le motif, puis on touche les élèves ----- */
+function paletteHTML() {
+  const act = view.pm && S.motifs.find((m) => m.id === view.pm && !m.hidden);
+  const groups = KINDS.map(([k]) => S.motifs.filter((m) => m.kind === k && !m.hidden).map((m) => `<button class="pm pm-${k}${act && act.id === m.id ? ' on' : ''}" data-pm="${m.id}" title="${esc(m.label)}"><span>${m.icon}</span>${esc(m.label)}</button>`).join('')).join('<i class="pm-sep"></i>');
+  return `<div class="palette-wrap${act ? ' active' : ''}"><div class="palette">${groups}</div>${act ? `<div class="pm-hint">${act.icon} <b>${esc(act.label)}</b> : touche chaque élève concerné. <button class="btn sm" id="pm-stop">✕ Arrêter</button></div>` : '<div class="pm-hint muted">Choisis un motif puis touche les élèves, ou touche directement un élève.</div>'}</div>`;
 }
 function motifButtons(stu) {
   return KINDS.map(([k, t]) => { const ms = S.motifs.filter((m) => m.kind === k && !m.hidden); return ms.length ? `<h3>${t}</h3><div class="mbtns">${ms.map((m) => `<button class="mb mb-${k}${k === 'neg' && stu && stu.amen && stu.amenM.includes(m.id) ? ' am' : ''}" data-m="${m.id}"><span>${m.icon}</span>${esc(m.label)}</button>`).join('')}</div>` : ''; }).join('');
@@ -844,6 +852,7 @@ function record(c, stu, mid, note) {
   else if (m.kind === 'neg' && isAmenEvent(stu, e)) msg += ' · noté, non compté (aménagement)';
   else if (m.kind === 'neg') msg += st.negCounted.length >= S.settings.neg ? ` · ${ord(st.negCounted.length)} remarque → à saisir sur École Directe` : ` · ${ord(st.negCounted.length)} remarque de la semaine`;
   else if (m.kind === 'pos' && st.posCounted.length === st.posTh) msg += ' · palier atteint → encouragement à saisir';
+  if (m.kind === 'pos') { const j = gaugeOf(c); if (j.full) msg += ' · 🏆 jauge pleine !'; }
   closeSheet(); render();
   toast(msg, 'Annuler', () => { S.events = S.events.filter((x) => x.id !== e.id); save(); render(); toast('Annulé.'); });
 }
@@ -915,6 +924,55 @@ function bindPlanEdit(c, room) {
       };
     });
   };
+}
+
+/* ----- Jauge de classe ----- */
+function gaugeCfg(c) { return (c.gauge = c.gauge || { goal: 30, reward: '', coef: 0.5, since: c.created || Date.now(), bonus: [], wins: [] }); }
+function gaugeOf(c) {
+  const g = gaugeCfg(c), byId = Object.fromEntries(c.students.map((t) => [t.id, t]));
+  let pos = 0, neg = 0;
+  for (const e of S.events) {
+    if (e.c !== c.id || e.t < g.since) continue;
+    const k = motif(e.m).kind, stu = byId[e.s];
+    if (k === 'pos') pos++; else if (!(stu && isAmenEvent(stu, e))) neg++;
+  }
+  const bonus = g.bonus.filter((b) => b.t >= g.since).reduce((m, b) => m + b.n, 0);
+  const pts = Math.max(0, Math.round((pos + bonus - neg * g.coef) * 2) / 2);
+  return { g, pos, neg, bonus, pts, pct: Math.min(100, pts / g.goal * 100), full: pts >= g.goal };
+}
+const fmtPts = (x) => String(x).replace('.', ',');
+function gaugeLabel(c) { const j = gaugeOf(c); return `${fmtPts(j.pts)}/${j.g.goal}`; }
+function renderJauge() {
+  const c = cls(view.c); if (!c) return go({ name: 'home' });
+  const back = () => go({ name: 'lesson', c: c.id, r: c.lastRoom || S.rooms[0]?.id || '' });
+  const j = gaugeOf(c), g = j.g;
+  const ratio = j.neg ? (j.pos / j.neg) : null;
+  let h = bar('Jauge · ' + esc(c.name), back) + '<main class="wrap">';
+  h += `<div class="gauge-card${j.full ? ' full' : ''}">
+    <div class="gauge-title">🏆 Jauge de la classe</div>
+    <div class="gauge-big"><b>${fmtPts(j.pts)}</b> / ${g.goal} points</div>
+    <div class="gauge"><i style="width:${j.pct}%"></i></div>
+    ${g.reward ? `<div class="gauge-reward">${j.full ? '🎉 Récompense gagnée : ' : 'Objectif : '}<b>${esc(g.reward)}</b></div>` : ''}
+    ${j.full ? '<div class="gauge-reward">Bravo à toute la classe !</div>' : ''}
+    <div class="gauge-detail">${plural(j.pos, 'point positif', 'points positifs')} · ${plural(j.bonus, 'bonus de classe', 'bonus de classe')} · ${plural(j.neg, 'remarque')}${g.coef ? ` (−${fmtPts(g.coef)} chacune)` : ' (ne font pas reculer)'}</div>
+    <div class="gauge-detail">${ratio === null ? (j.pos ? 'Aucune remarque : que du positif !' : '') : `Ratio : <b>${fmtPts(Math.round(ratio * 10) / 10)}</b> positif${ratio >= 2 ? 's' : ''} pour 1 remarque`}</div>
+  </div>
+  <p class="small muted center">Cet écran peut être projeté : aucun prénom n'y apparaît.</p>
+  <div class="row center"><button class="btn primary" data-bonus="1">＋1 bonus de classe</button><button class="btn" data-bonus="3">＋3</button><button class="btn" data-bonus="-1">−1</button>
+    ${j.full ? '<button class="btn primary" id="j-win">🎉 Récompense donnée : nouvelle manche</button>' : '<button class="btn" id="j-reset">Recommencer à zéro</button>'}</div>
+  <details class="box"><summary><b>Réglages de la jauge</b></summary>
+    <label class="f"><span>Objectif (points)</span><input type="number" id="j-goal" min="5" max="300" value="${g.goal}"></label>
+    <label class="f"><span>Récompense</span><input type="text" id="j-rew" value="${esc(g.reward)}" placeholder="Jeu mathématique en fin d'heure, choisir la musique…"></label>
+    <label class="f"><span>Chaque remarque fait reculer la jauge de</span><select id="j-coef">${[[0, '0 (les remarques ne comptent pas)'], [0.5, '½ point'], [1, '1 point']].map(([v, l]) => `<option value="${v}"${g.coef === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+    <p class="small muted">Chaque point positif d'un élève fait avancer la jauge de 1. Les remarques non comptées (aménagements) ne la font pas reculer. ${g.wins.length ? `Manches gagnées : ${g.wins.length}.` : ''}</p>
+  </details></main>`;
+  mount(h, back);
+  $$('[data-bonus]').forEach((b) => { b.onclick = () => { g.bonus.push({ t: Date.now(), n: Number(b.dataset.bonus) }); save(); render(); }; });
+  $('#j-win')?.addEventListener('click', () => { g.wins.push(Date.now()); g.since = Date.now(); save(); render(); toast('Nouvelle manche : la jauge repart de zéro.'); });
+  $('#j-reset')?.addEventListener('click', () => { if (confirm('Remettre la jauge à zéro ?')) { g.since = Date.now(); save(); render(); } });
+  $('#j-goal').onchange = (e) => { g.goal = Math.max(5, Math.min(300, Math.round(Number(e.target.value) || 30))); save(); render(); };
+  $('#j-rew').onchange = (e) => { g.reward = e.target.value.trim(); save(); render(); };
+  $('#j-coef').onchange = (e) => { g.coef = Number(e.target.value); save(); render(); };
 }
 
 /* ----- Suivi de la classe ----- */
