@@ -254,7 +254,7 @@ table.t tr.click { cursor: pointer; }
    Toutes les données restent sur l'appareil, chiffrées (AES-GCM) avec une clé
    protégée par le code du professeur (PBKDF2). Rien n'est envoyé sur internet.
    ========================================================= */
-const APP_VERSION = '2026-10-15.5';
+const APP_VERSION = '2026-11-07.2';
 const LS_KEYS = 'maclasse-cles', LS_DATA = 'maclasse-donnees', LS_TRY = 'maclasse-essais';
 const DAY = 864e5;
 const $ = (s, r = document) => r.querySelector(s);
@@ -422,6 +422,52 @@ function status(stu, now = Date.now()) {
     posAlert: posCounted.length >= posTh,
     valor: !!stu.amen && now - Math.max(lastPos, stu.since || 0) > S.settings.valorDays * DAY,
   };
+}
+/* ---------- Distribution des feuilles : 2 élèves par séance, à tour de rôle (ordre alphabétique) ----------
+   c.dist = { ids: [id, id], last: dernier élève atteint dans le tour, seen: dernière fois que le cours était ouvert }.
+   Nouvelle séance = la classe est rouverte après plus d'1 h sans l'utiliser (ou bouton « Séance suivante »).
+   On n'avance que quand la classe est ouverte : les vacances et les jours sans cours ne sautent personne. */
+const DIST_N = 2, DIST_GAP = 60 * 60000;
+const byName = (a, b) => a.name.localeCompare(b.name, 'fr');
+function distNext(c, sid, skip = []) {
+  const l = c.students.slice().sort(byName);
+  let i = l.findIndex((t) => t.id === sid); // -1 (élève retiré ou rien) → premier de la liste
+  for (let k = 0; k < l.length; k++) { i = (i + 1) % l.length; if (!skip.includes(l[i].id)) return l[i].id; }
+  return null;
+}
+function distRound(c, last) { const ids = []; for (let k = 0; k < DIST_N; k++) { const n = distNext(c, last, ids); if (!n) break; ids.push(n); last = n; } return { ids, last }; }
+function distNewSession(c) { const r = distRound(c, c.dist?.last ?? c.dist?.s); c.dist = { ...r, seen: Date.now() }; save(); }
+/** Les élèves qui distribuent pendant cette séance (passe à la séance suivante si besoin) */
+function distributors(c) {
+  if (!c.students.length) return [];
+  const d = c.dist, ok = (id) => c.students.some((t) => t.id === id);
+  if (!d?.ids || !d.ids.length || !d.ids.every(ok) || Date.now() - d.seen > DIST_GAP) distNewSession(c);
+  else { d.seen = Date.now(); save(); }
+  return c.dist.ids.map((id) => c.students.find((t) => t.id === id));
+}
+function openDist(c) {
+  const cur = distributors(c); if (!cur.length) return;
+  const nm = (id) => esc(c.students.find((t) => t.id === id)?.name || '');
+  const nx = distRound(c, c.dist.last).ids;
+  const studs = c.students.slice().sort(byName);
+  openSheet(`<div class="sheet-h"><div><b>📄 Distribution des feuilles</b><div class="small muted">${DIST_N} élèves par séance, à tour de rôle (ordre alphabétique).</div></div><button class="ib" id="ds-x" aria-label="Fermer">✕</button></div>
+    <div class="box">${cur.map((t, i) => `<div class="row" style="margin:6px 0"><b style="flex:1">📄 ${esc(t.name)}</b><button class="btn sm" data-abs="${i}">Absent → remplacer</button><select data-pick="${i}" aria-label="Choisir un autre élève"><option value="">Choisir…</option>${studs.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select></div>`).join('')}
+    <span class="small muted">Séance suivante : ${nx.map(nm).join(' et ')}</span></div>
+    <div class="row"><button class="btn" id="ds-next">⏭ Passer à la séance suivante</button></div>
+    <p class="small muted">Ça tourne tout seul quand tu rouvres la classe après plus d'une heure. Le bouton ci-dessus sert si ça n'a pas tourné (deux cours collés, par exemple).</p>`, (o) => {
+    const done = () => { save(); render(); openDist(c); };
+    $('#ds-x', o).onclick = closeSheet;
+    $('#ds-next', o).onclick = () => { distNewSession(c); done(); };
+    $$('[data-abs]', o).forEach((b) => { b.onclick = () => {
+      const n = distNext(c, c.dist.last, c.dist.ids); if (!n) return toast('Personne d\'autre à proposer.');
+      c.dist.ids[Number(b.dataset.abs)] = n; c.dist.last = n; done();
+    }; });
+    $$('[data-pick]', o).forEach((s) => { s.onchange = () => {
+      const v = s.value, i = Number(s.dataset.pick); if (!v) return;
+      const j = c.dist.ids.indexOf(v); if (j >= 0 && j !== i) c.dist.ids[j] = c.dist.ids[i]; // échange si déjà choisi
+      c.dist.ids[i] = v; done();
+    }; });
+  });
 }
 function classAlerts(c) { let neg = 0, pos = 0; for (const t of c.students) { const s = status(t); if (s.negAlert) neg++; if (s.posAlert) pos++; } return { neg, pos }; }
 
@@ -789,10 +835,12 @@ function renderLesson() {
   if (room && c.lastRoom !== room.id) { c.lastRoom = room.id; save(); }
   const mode = room ? (view.edit || '') : ''; // '' | 'eleves' | 'tables'
   const st = {}; for (const t of c.students) st[t.id] = status(t);
+  const dist = distributors(c);
+  const fe = (t) => (dist.includes(t) ? '<i class="d v" title="Distribue les feuilles pendant cette séance">📄</i>' : '');
   let h = bar(esc(c.name), () => go({ name: 'home' })) + `<main class="wrap wide${mode ? ' edit' : ''}">`;
   h += `<div class="subbar"><select id="l-room" aria-label="Salle">${S.rooms.map((r) => `<option value="${r.id}"${room && r.id === room.id ? ' selected' : ''}>🏫 ${esc(r.name)}</option>`).join('')}<option value=""${room ? '' : ' selected'}>☰ Liste (sans plan)</option></select>`;
   if (mode) h += `<div class="seg"><button class="${mode === 'eleves' ? 'on' : ''}" data-mode="eleves">👥 Placer les élèves</button><button class="${mode === 'tables' ? 'on' : ''}" data-mode="tables">🪑 Bouger les tables</button></div><button class="btn sm primary" id="l-done">✔ Terminé</button>`;
-  else h += `${room ? '<button class="btn sm" id="l-edit">✏️ Modifier le plan</button>' : ''}<button class="btn sm" id="l-suivi">📋 Suivi${(() => { const a = classAlerts(c); return a.neg || a.pos ? ` <span class="pill ${a.neg ? 'red' : 'green'}">${a.neg + a.pos}</span>` : ''; })()}</button><button class="btn sm" id="l-jauge" title="Jauge de classe">🏆 ${gaugeLabel(c)}</button><button class="btn sm" id="l-class" title="Élèves de la classe">👥</button>`;
+  else h += `${room ? '<button class="btn sm" id="l-edit">✏️ Modifier le plan</button>' : ''}<button class="btn sm" id="l-suivi">📋 Suivi${(() => { const a = classAlerts(c); return a.neg || a.pos ? ` <span class="pill ${a.neg ? 'red' : 'green'}">${a.neg + a.pos}</span>` : ''; })()}</button><button class="btn sm" id="l-jauge" title="Jauge de classe">🏆 ${gaugeLabel(c)}</button><button class="btn sm" id="l-class" title="Élèves de la classe">👥</button>${dist.length ? `<button class="btn sm" id="l-dist" title="Distribuent les feuilles pendant cette séance">📄 ${dist.map((t) => esc(t.name)).join(', ')}</button>` : ''}`;
   h += '</div>';
   if (mode === 'tables') {
     h += tablesEditorHTML(room) + '</main>';
@@ -809,7 +857,7 @@ function renderLesson() {
     const byId = Object.fromEntries(c.students.map((t) => [t.id, t]));
     const edit = mode === 'eleves';
     const u = unitFor(roomBox(room).W, edit);
-    const seatFn = (s, style) => { const t = byId[plan[s.id]]; return `<div class="seat${t ? ' occ ' + (edit ? '' : alertCls(st[t.id])) : ''}" data-seat="${s.id}"${t ? ` data-s="${t.id}"` : ''} style="${style}"><div class="seat-in">${t ? `<span class="nm">${esc(t.name)}</span>${edit ? '' : `<span class="bd">${badges(st[t.id])}</span>`}` : ''}</div></div>`; };
+    const seatFn = (s, style) => { const t = byId[plan[s.id]]; return `<div class="seat${t ? ' occ ' + (edit ? '' : alertCls(st[t.id])) : ''}" data-seat="${s.id}"${t ? ` data-s="${t.id}"` : ''} style="${style}"><div class="seat-in">${t ? `<span class="nm">${esc(t.name)}</span>${edit ? '' : `<span class="bd">${fe(t)}${badges(st[t.id])}</span>`}` : ''}</div></div>`; };
     const roomH = `<div class="plan-scroll">${roomHTML(room, { u, seat: seatFn })}</div>`;
     const placed = new Set(Object.values(plan));
     const un = c.students.filter((t) => !placed.has(t.id)).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
@@ -819,12 +867,12 @@ function renderLesson() {
         <p class="small muted">Fais glisser un prénom de la liste vers une place, ou d'une place à une autre (deux élèves échangent leurs places). Pour retirer un élève du plan, glisse-le dans la liste. Tu peux aussi toucher un élève, puis une place.</p>`;
     } else {
       h += roomH;
-      if (un.length) h += `<div class="unplaced"><h3>Pas placés sur le plan</h3><div class="chips">${un.map((t) => `<button class="chip" data-s="${t.id}">${esc(t.name)} <span class="bd">${badges(st[t.id])}</span></button>`).join('')}</div></div>`;
+      if (un.length) h += `<div class="unplaced"><h3>Pas placés sur le plan</h3><div class="chips">${un.map((t) => `<button class="chip" data-s="${t.id}">${esc(t.name)} <span class="bd">${fe(t)}${badges(st[t.id])}</span></button>`).join('')}</div></div>`;
     }
   } else {
     if (!S.rooms.length) h += '<div class="banner info">Crée ta salle pour avoir le plan de classe. <button class="btn sm" id="l-newroom">Créer une salle</button></div>';
     const studs = c.students.slice().sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-    h += `<div class="list">${studs.map((t) => `<button class="li ${st[t.id].negAlert ? 'al-red' : ''}" data-s="${t.id}"><span class="nm">${esc(t.name)}</span><span class="bd">${badges(st[t.id])}</span></button>`).join('')}</div>`;
+    h += `<div class="list">${studs.map((t) => `<button class="li ${st[t.id].negAlert ? 'al-red' : ''}" data-s="${t.id}"><span class="nm">${esc(t.name)}</span><span class="bd">${fe(t)}${badges(st[t.id])}</span></button>`).join('')}</div>`;
   }
   h += '</main>';
   mount(h, () => go({ name: 'home' }));
@@ -846,6 +894,7 @@ function bindLessonBar(c, room) {
   $$('[data-mode]').forEach((b) => { b.onclick = () => { view.edit = b.dataset.mode; view.selT = null; render(); }; });
   $('#l-suivi')?.addEventListener('click', () => go({ name: 'suivi', c: c.id }));
   $('#l-class')?.addEventListener('click', () => go({ name: 'classe', c: c.id }));
+  $('#l-dist')?.addEventListener('click', () => openDist(c));
   $('#l-add')?.addEventListener('click', () => go({ name: 'classe', c: c.id }));
   $('#l-newroom')?.addEventListener('click', () => go({ name: 'salle', r: null, back: { name: 'lesson', c: c.id } }));
 }
@@ -853,15 +902,24 @@ function bindLessonBar(c, room) {
 function openStudent(c, stu) {
   if (!stu) return;
   const st = status(stu);
+  const wk = S.events.filter((e) => e.s === stu.id && e.t >= weekStart()).sort((a, b) => b.t - a.t);
   const am = ''; // discrétion : rien n'indique les aménagements sur la feuille de saisie (les boutons non comptés sont seulement estompés)
   openSheet(`<div class="sheet-h"><div><b>${esc(stu.name)}</b>${am}<div class="small muted">Cette semaine : ${st.negCounted.length} / ${S.settings.neg} remarque${st.negCounted.length > 1 ? 's' : ''} · ${st.posCounted.length} / ${st.posTh} positif${st.posCounted.length > 1 ? 's' : ''}${st.graves.length ? ' · <b style="color:var(--red)">fait grave à saisir</b>' : ''}</div></div><button class="ib" id="sh-x" aria-label="Fermer">✕</button></div>
     <input type="text" class="note" id="sh-note" maxlength="160" placeholder="Précision (facultatif) : ce qui s'est passé, sans jugement">
     ${motifButtons(stu)}
-    <div class="row"><button class="btn" id="sh-fiche">Voir sa fiche</button></div>`, (o) => {
+    ${wk.length ? `<h3>Noté cette semaine</h3><ul class="hist">${wk.map((e) => `<li><span class="when">${dShort(e.t)} ${hm(e.t)}</span><span class="what">${motif(e.m).icon} ${esc(motif(e.m).label)}${e.n ? ` <span class="muted">— ${esc(e.n)}</span>` : ''}</span><button class="btn sm danger" data-rmev="${e.id}">✕ Enlever</button></li>`).join('')}</ul>` : ''}
+    <div class="row"><button class="btn" id="sh-fiche">Voir sa fiche (tout l'historique)</button></div>`, (o) => {
     $('#sh-x', o).onclick = closeSheet;
     $('#sh-fiche', o).onclick = () => go({ name: 'eleve', c: c.id, s: stu.id, back: { ...view } });
     $$('.mb', o).forEach((b) => { b.onclick = () => record(c, stu, b.dataset.m, $('#sh-note', o).value.trim()); });
+    $$('[data-rmev]', o).forEach((b) => { b.onclick = () => removeEvent(b.dataset.rmev, () => openStudent(c, stu)); });
   });
+}
+/** Enlève une remarque (ou un positif) avec possibilité d'annuler ; after() rouvre l'écran d'où on vient */
+function removeEvent(id, after) {
+  const i = S.events.findIndex((x) => x.id === id); if (i < 0) return;
+  const [e] = S.events.splice(i, 1); save(); render(); after?.();
+  toast(`${motif(e.m).label} du ${dShort(e.t)} enlevé.`, 'Annuler', () => { S.events.push(e); save(); render(); after?.(); });
 }
 /* ----- Palette : on choisit le motif, puis on touche les élèves ----- */
 function paletteHTML() {
@@ -1094,14 +1152,14 @@ function renderEleve() {
     <p class="small muted">À faire correspondre à ce qui est prévu dans son PAP ou PPS, en accord avec l'équipe. N'écris jamais de diagnostic.</p></details>`;
   // historique
   const items = [...evs.map((e) => ({ t: e.t, e })), ...done.map((d) => ({ t: d.t, d }))].sort((a, b) => b.t - a.t);
-  h += `<h2>Historique</h2><ul class="hist">${items.map((it) => it.e ? `<li><span class="when">${dShort(it.e.t)} ${hm(it.e.t)}</span><span class="what">${motif(it.e.m).icon} ${esc(motif(it.e.m).label)}${isAmenEvent(stu, it.e) ? '<span class="tag am">non compté</span>' : ''}${it.e.n ? ` <span class="muted">— ${esc(it.e.n)}</span>` : ''}</span><button class="x" data-del="${it.e.id}" aria-label="Supprimer">✕</button></li>` : `<li class="done"><span class="when">${dShort(it.d.t)} ${hm(it.d.t)}</span><span class="what">✔ ${it.d.type === 'neg' ? 'Observation' : 'Encouragement'} saisi sur École Directe</span></li>`).join('') || '<li class="muted">Rien pour l\'instant.</li>'}</ul>`;
+  h += `<h2>Historique</h2><ul class="hist">${items.map((it) => it.e ? `<li><span class="when">${dShort(it.e.t)} ${hm(it.e.t)}</span><span class="what">${motif(it.e.m).icon} ${esc(motif(it.e.m).label)}${isAmenEvent(stu, it.e) ? '<span class="tag am">non compté</span>' : ''}${it.e.n ? ` <span class="muted">— ${esc(it.e.n)}</span>` : ''}</span><button class="x" data-del="${it.e.id}" aria-label="Enlever" title="Enlever">✕</button></li>` : `<li class="done"><span class="when">${dShort(it.d.t)} ${hm(it.d.t)}</span><span class="what">✔ ${it.d.type === 'neg' ? 'Observation' : 'Encouragement'} saisi sur École Directe</span></li>`).join('') || '<li class="muted">Rien pour l\'instant.</li>'}</ul>`;
   h += '</main>';
   mount(h, back);
   $('#e-per').onchange = (e) => { view.per = e.target.value === 'all' ? 'all' : Number(e.target.value); render(); };
   $('#e-parents').onclick = () => go({ name: 'parents', c: c.id, s: stu.id, back: { ...view } });
   $('#e-amen').onchange = (e) => { stu.amen = e.target.checked; if (stu.amen) { if (!stu.amenM.length) stu.amenM = amenableIds(); stu.since = Date.now(); } save(); render(); };
   $$('[data-am]').forEach((b) => { b.onchange = () => { stu.amenM = $$('[data-am]').filter((x) => x.checked).map((x) => x.dataset.am); save(); }; });
-  $$('[data-del]').forEach((b) => { b.onclick = () => { const e = S.events.find((x) => x.id === b.dataset.del); if (e && confirm(`Supprimer « ${motif(e.m).label} » du ${dShort(e.t)} ?`)) { S.events = S.events.filter((x) => x !== e); save(); render(); } }; });
+  $$('[data-del]').forEach((b) => { b.onclick = () => removeEvent(b.dataset.del); });
   $$('[data-copy]').forEach((b) => { b.onclick = () => copyText(edText(stu, b.dataset.copy), b); });
   $$('[data-done]').forEach((b) => { b.onclick = () => markDone(stu, b.dataset.done); });
 }

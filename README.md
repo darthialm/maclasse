@@ -9,6 +9,8 @@ Outil pour tablette ou téléphone : en deux touches, tu notes une remarque ou u
 - **Saisie** : tu touches un élève, puis un motif (remarques, positifs, faits graves), avec une précision facultative. Le bouton « Annuler » rattrape une erreur.
 - **Motif d'abord, puis les élèves** : tous les motifs sont affichés au-dessus du plan. Touche un motif (il passe en bleu), puis chaque élève concerné : c'est noté à chaque fois, sans autre étape. « ✕ Arrêter » pour revenir à la saisie normale.
 - **Jauge de classe** (🏆) : chaque point positif fait avancer la jauge de 1. Chaque remarque la fait reculer (½ point par défaut, réglable : 0, ½ ou 1). Tu peux ajouter des bonus pour toute la classe (＋1, ＋3). L'écran affiche l'objectif, la récompense et le ratio positifs / remarques, sans aucun prénom : il peut être projeté. Quand la jauge est pleine, « Récompense donnée » lance une nouvelle manche.
+- **Enlever une remarque** : touche l'élève, puis « ✕ Enlever » dans la liste « Noté cette semaine ». Pour une remarque plus ancienne : « Voir sa fiche » → Historique → ✕. Un bouton « Annuler » permet de revenir en arrière.
+- **Distribution des feuilles** : le bouton 📄 dans la barre du cours indique les 2 élèves qui distribuent pendant la séance (ils ont aussi 📄 sur le plan). Ça tourne tout seul à chaque séance, par ordre alphabétique : dès que tu rouvres la classe après plus d'une heure. Touche le bouton pour remplacer un absent, choisir quelqu'un d'autre ou passer à la séance suivante (utile si tu as deux cours collés avec la même classe).
 - **Paliers** (modifiables dans ⚙️) :
   - 3 remarques dans la semaine, ou un fait grave : **observation à saisir sur École Directe**. Remise à zéro le lundi.
   - 5 positifs en 14 jours : **encouragement à saisir**.
