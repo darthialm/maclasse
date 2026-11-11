@@ -10,11 +10,16 @@ Outil pour tablette ou téléphone : en deux touches, tu notes une remarque ou u
 - **Motif d'abord, puis les élèves** : tous les motifs sont affichés au-dessus du plan. Touche un motif (il passe en bleu), puis chaque élève concerné : c'est noté à chaque fois, sans autre étape. « ✕ Arrêter » pour revenir à la saisie normale.
 - **Jauge de classe** (🏆) : chaque point positif fait avancer la jauge de 1. Chaque remarque la fait reculer (½ point par défaut, réglable : 0, ½ ou 1). Tu peux ajouter des bonus pour toute la classe (＋1, ＋3). L'écran affiche l'objectif, la récompense et le ratio positifs / remarques, sans aucun prénom : il peut être projeté. Quand la jauge est pleine, « Récompense donnée » lance une nouvelle manche.
 - **Enlever une remarque** : touche l'élève, puis « ✕ Enlever » dans la liste « Noté cette semaine ». Pour une remarque plus ancienne : « Voir sa fiche » → Historique → ✕. Un bouton « Annuler » permet de revenir en arrière.
-- **Distribution des feuilles** : le bouton 📄 dans la barre du cours indique les 2 élèves qui distribuent pendant la séance (ils ont aussi 📄 sur le plan). Ça tourne tout seul à chaque séance, par ordre alphabétique : dès que tu rouvres la classe après plus d'une heure. Touche le bouton pour remplacer un absent, choisir quelqu'un d'autre ou passer à la séance suivante (utile si tu as deux cours collés avec la même classe).
+- **Distribution des feuilles** : le bouton 📄 dans la barre du cours indique les 2 élèves qui distribuent aujourd'hui (ils ont aussi 📄 sur le plan). Ça tourne tout seul **une fois par jour**, par ordre alphabétique : au premier cours de la journée avec cette classe ; les autres cours du même jour gardent les mêmes élèves. Les jours sans cours et les vacances ne sautent personne. Touche le bouton pour remplacer un absent, choisir quelqu'un d'autre ou passer aux suivants tout de suite.
 - **Paliers** (modifiables dans ⚙️) :
-  - 3 remarques dans la semaine, ou un fait grave : **observation à saisir sur École Directe**. Remise à zéro le lundi.
+  - 3 remarques dans la semaine (remise à zéro le lundi) : **un travail en plus à chaque fois**, et selon le délai :
+    - la 1re fois : seulement le travail en plus ;
+    - si ça recommence **la semaine juste après** : **mise en garde** (+ travail en plus) ;
+    - si ça recommence **plus tard**, ou après une mise en garde : **observation sur École Directe** (+ travail en plus). Ensuite, on repart de zéro.
+  - Un fait grave : **observation à saisir sur École Directe** tout de suite.
+  - Tout ce qu'il y a à faire est dans 📋 Suivi. La fiche de l'élève indique aussi ce qui arrivera s'il atteint le palier cette semaine.
   - 5 positifs en 14 jours : **encouragement à saisir**.
-  - « ✔ Saisi » remet le compteur à zéro. « Copier le texte » prépare le texte à coller dans École Directe.
+  - « ✔ Fait » / « ✔ Saisi » remet le compteur à zéro. « Copier le texte » prépare le texte à coller dans École Directe.
 - **Aménagements** (fiche de l'élève) : tu choisis les motifs qui sont notés mais pas comptés. Le palier positif descend à 3, et l'outil te rappelle de valoriser l'élève. Ils n'apparaissent jamais sur la fiche parents. N'écris jamais de diagnostic.
 - **Suivi de la classe** : qui reprendre, qui encourager, qui valoriser, les élèves « pas vus » depuis 14 jours, et l'équilibre entre positifs et remarques de la semaine.
 - **Fiche parents** : uniquement l'élève concerné, avec les faits datés. Tu peux l'imprimer, l'enregistrer en PDF ou la montrer sur l'écran.

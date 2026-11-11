@@ -254,7 +254,7 @@ table.t tr.click { cursor: pointer; }
    Toutes les données restent sur l'appareil, chiffrées (AES-GCM) avec une clé
    protégée par le code du professeur (PBKDF2). Rien n'est envoyé sur internet.
    ========================================================= */
-const APP_VERSION = '2026-11-07.2';
+const APP_VERSION = '2026-11-11.2';
 const LS_KEYS = 'maclasse-cles', LS_DATA = 'maclasse-donnees', LS_TRY = 'maclasse-essais';
 const DAY = 864e5;
 const $ = (s, r = document) => r.querySelector(s);
@@ -406,6 +406,28 @@ const motif = (id) => S.motifs.find((m) => m.id === id) || { id, label: '(motif 
 const amenableIds = () => S.motifs.filter((m) => m.kind === 'neg' && m.amen && !m.hidden).map((m) => m.id);
 const isAmenEvent = (stu, e) => !!stu.amen && stu.amenM.includes(e.m);
 function lastDone(sid, type) { let t = 0; for (const d of S.done) if (d.s === sid && d.type === type && d.t > t) t = d.t; return t; }
+/* ---------- Paliers de remarques : à chaque fois un travail en plus, puis selon le délai ----------
+   1re fois : travail en plus. Fois suivante la semaine juste après : mise en garde.
+   Fois suivante plus tard (ou après une mise en garde) : observation École Directe, puis on repart de zéro.
+   Calculé à partir des semaines où l'élève a atteint le palier. Les anciennes observations (S.done sans v2) remettent à zéro. */
+const LVL = { travail: '📝 Travail en plus', garde: '⚠️ Mise en garde + travail en plus', obs: '🔴 Observation École Directe + travail en plus' };
+function negSteps(stu, extra) { // { semaine: 'travail' | 'garde' | 'obs' }, en ajoutant éventuellement la semaine « extra »
+  const cnt = {};
+  for (const e of S.events) if (e.s === stu.id && motif(e.m).kind === 'neg' && !isAmenEvent(stu, e)) { const w = weekStart(e.t); cnt[w] = (cnt[w] || 0) + 1; }
+  let from = 0; for (const d of S.done) if (d.s === stu.id && d.type === 'neg' && !d.v2 && d.t > from) from = d.t;
+  const min = from ? weekStart(from) : -Infinity;
+  const ws = Object.keys(cnt).map(Number).filter((w) => cnt[w] >= S.settings.neg && w > min);
+  if (extra != null && !ws.includes(extra)) ws.push(extra);
+  ws.sort((a, b) => a - b);
+  const out = {}; let prev = null, garde = false;
+  for (const w of ws) {
+    const l = prev === null ? 'travail' : w - prev < 8 * DAY && !garde ? 'garde' : 'obs';
+    out[w] = l;
+    if (l === 'obs') { prev = null; garde = false; } else { prev = w; if (l === 'garde') garde = true; }
+  }
+  return out;
+}
+function lvlLabel(st) { return st.level ? LVL[st.level] : st.graves.length ? '🔴 Observation École Directe (fait grave)' : ''; }
 function status(stu, now = Date.now()) {
   const evs = S.events.filter((e) => e.s === stu.id);
   const dn = lastDone(stu.id, 'neg'), dp = lastDone(stu.id, 'pos'), ws = weekStart(now);
@@ -416,19 +438,22 @@ function status(stu, now = Date.now()) {
   const posTh = stu.amen ? S.settings.posAmen : S.settings.pos;
   const lastPos = evs.reduce((m, e) => (kind(e) === 'pos' && e.t > m ? e.t : m), 0);
   const lastAny = evs.reduce((m, e) => Math.max(m, e.t), 0);
+  const next = negSteps(stu, ws)[ws]; // ce qui arrive (ou arriverait) au palier cette semaine
   return {
-    negCounted, graves, posCounted, posTh, lastAny,
+    negCounted, graves, posCounted, posTh, lastAny, next,
+    level: negCounted.length >= S.settings.neg ? next : null,
     negAlert: negCounted.length >= S.settings.neg || graves.length > 0,
     posAlert: posCounted.length >= posTh,
     valor: !!stu.amen && now - Math.max(lastPos, stu.since || 0) > S.settings.valorDays * DAY,
   };
 }
-/* ---------- Distribution des feuilles : 2 élèves par séance, à tour de rôle (ordre alphabétique) ----------
-   c.dist = { ids: [id, id], last: dernier élève atteint dans le tour, seen: dernière fois que le cours était ouvert }.
-   Nouvelle séance = la classe est rouverte après plus d'1 h sans l'utiliser (ou bouton « Séance suivante »).
+/* ---------- Distribution des feuilles : 2 élèves par jour, à tour de rôle (ordre alphabétique) ----------
+   c.dist = { ids: [id, id], last: dernier élève atteint dans le tour, day: jour (AAAA-MM-JJ) où ces élèves ont été tirés }.
+   On ne change d'élèves que le premier jour où la classe est rouverte après ce jour-là : toute la journée, ce sont les mêmes.
    On n'avance que quand la classe est ouverte : les vacances et les jours sans cours ne sautent personne. */
-const DIST_N = 2, DIST_GAP = 60 * 60000;
+const DIST_N = 2;
 const byName = (a, b) => a.name.localeCompare(b.name, 'fr');
+const dayKey = (t = Date.now()) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 function distNext(c, sid, skip = []) {
   const l = c.students.slice().sort(byName);
   let i = l.findIndex((t) => t.id === sid); // -1 (élève retiré ou rien) → premier de la liste
@@ -436,13 +461,13 @@ function distNext(c, sid, skip = []) {
   return null;
 }
 function distRound(c, last) { const ids = []; for (let k = 0; k < DIST_N; k++) { const n = distNext(c, last, ids); if (!n) break; ids.push(n); last = n; } return { ids, last }; }
-function distNewSession(c) { const r = distRound(c, c.dist?.last ?? c.dist?.s); c.dist = { ...r, seen: Date.now() }; save(); }
-/** Les élèves qui distribuent pendant cette séance (passe à la séance suivante si besoin) */
+function distNewDay(c) { const r = distRound(c, c.dist?.last ?? c.dist?.s); c.dist = { ...r, day: dayKey() }; save(); }
+/** Les élèves qui distribuent aujourd'hui (passe aux suivants si on a changé de jour) */
 function distributors(c) {
   if (!c.students.length) return [];
   const d = c.dist, ok = (id) => c.students.some((t) => t.id === id);
-  if (!d?.ids || !d.ids.length || !d.ids.every(ok) || Date.now() - d.seen > DIST_GAP) distNewSession(c);
-  else { d.seen = Date.now(); save(); }
+  if (d && !d.day && d.seen) { d.day = dayKey(d.seen); delete d.seen; save(); } // anciennes données : on garde les élèves du jour
+  if (!d?.ids || !d.ids.length || !d.ids.every(ok) || d.day !== dayKey()) distNewDay(c);
   return c.dist.ids.map((id) => c.students.find((t) => t.id === id));
 }
 function openDist(c) {
@@ -450,14 +475,14 @@ function openDist(c) {
   const nm = (id) => esc(c.students.find((t) => t.id === id)?.name || '');
   const nx = distRound(c, c.dist.last).ids;
   const studs = c.students.slice().sort(byName);
-  openSheet(`<div class="sheet-h"><div><b>📄 Distribution des feuilles</b><div class="small muted">${DIST_N} élèves par séance, à tour de rôle (ordre alphabétique).</div></div><button class="ib" id="ds-x" aria-label="Fermer">✕</button></div>
+  openSheet(`<div class="sheet-h"><div><b>📄 Distribution des feuilles</b><div class="small muted">${DIST_N} élèves par jour, à tour de rôle (ordre alphabétique).</div></div><button class="ib" id="ds-x" aria-label="Fermer">✕</button></div>
     <div class="box">${cur.map((t, i) => `<div class="row" style="margin:6px 0"><b style="flex:1">📄 ${esc(t.name)}</b><button class="btn sm" data-abs="${i}">Absent → remplacer</button><select data-pick="${i}" aria-label="Choisir un autre élève"><option value="">Choisir…</option>${studs.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select></div>`).join('')}
-    <span class="small muted">Séance suivante : ${nx.map(nm).join(' et ')}</span></div>
-    <div class="row"><button class="btn" id="ds-next">⏭ Passer à la séance suivante</button></div>
-    <p class="small muted">Ça tourne tout seul quand tu rouvres la classe après plus d'une heure. Le bouton ci-dessus sert si ça n'a pas tourné (deux cours collés, par exemple).</p>`, (o) => {
+    <span class="small muted">Prochain jour de cours : ${nx.map(nm).join(' et ')}</span></div>
+    <div class="row"><button class="btn" id="ds-next">⏭ Passer aux suivants maintenant</button></div>
+    <p class="small muted">Ça change tout seul une fois par jour, au premier cours de la journée avec cette classe. Les autres cours du même jour gardent les mêmes élèves.</p>`, (o) => {
     const done = () => { save(); render(); openDist(c); };
     $('#ds-x', o).onclick = closeSheet;
-    $('#ds-next', o).onclick = () => { distNewSession(c); done(); };
+    $('#ds-next', o).onclick = () => { distNewDay(c); done(); };
     $$('[data-abs]', o).forEach((b) => { b.onclick = () => {
       const n = distNext(c, c.dist.last, c.dist.ids); if (!n) return toast('Personne d\'autre à proposer.');
       c.dist.ids[Number(b.dataset.abs)] = n; c.dist.last = n; done();
@@ -836,11 +861,11 @@ function renderLesson() {
   const mode = room ? (view.edit || '') : ''; // '' | 'eleves' | 'tables'
   const st = {}; for (const t of c.students) st[t.id] = status(t);
   const dist = distributors(c);
-  const fe = (t) => (dist.includes(t) ? '<i class="d v" title="Distribue les feuilles pendant cette séance">📄</i>' : '');
+  const fe = (t) => (dist.includes(t) ? '<i class="d v" title="Distribue les feuilles aujourd’hui">📄</i>' : '');
   let h = bar(esc(c.name), () => go({ name: 'home' })) + `<main class="wrap wide${mode ? ' edit' : ''}">`;
   h += `<div class="subbar"><select id="l-room" aria-label="Salle">${S.rooms.map((r) => `<option value="${r.id}"${room && r.id === room.id ? ' selected' : ''}>🏫 ${esc(r.name)}</option>`).join('')}<option value=""${room ? '' : ' selected'}>☰ Liste (sans plan)</option></select>`;
   if (mode) h += `<div class="seg"><button class="${mode === 'eleves' ? 'on' : ''}" data-mode="eleves">👥 Placer les élèves</button><button class="${mode === 'tables' ? 'on' : ''}" data-mode="tables">🪑 Bouger les tables</button></div><button class="btn sm primary" id="l-done">✔ Terminé</button>`;
-  else h += `${room ? '<button class="btn sm" id="l-edit">✏️ Modifier le plan</button>' : ''}<button class="btn sm" id="l-suivi">📋 Suivi${(() => { const a = classAlerts(c); return a.neg || a.pos ? ` <span class="pill ${a.neg ? 'red' : 'green'}">${a.neg + a.pos}</span>` : ''; })()}</button><button class="btn sm" id="l-jauge" title="Jauge de classe">🏆 ${gaugeLabel(c)}</button><button class="btn sm" id="l-class" title="Élèves de la classe">👥</button>${dist.length ? `<button class="btn sm" id="l-dist" title="Distribuent les feuilles pendant cette séance">📄 ${dist.map((t) => esc(t.name)).join(', ')}</button>` : ''}`;
+  else h += `${room ? '<button class="btn sm" id="l-edit">✏️ Modifier le plan</button>' : ''}<button class="btn sm" id="l-suivi">📋 Suivi${(() => { const a = classAlerts(c); return a.neg || a.pos ? ` <span class="pill ${a.neg ? 'red' : 'green'}">${a.neg + a.pos}</span>` : ''; })()}</button><button class="btn sm" id="l-jauge" title="Jauge de classe">🏆 ${gaugeLabel(c)}</button><button class="btn sm" id="l-class" title="Élèves de la classe">👥</button>${dist.length ? `<button class="btn sm" id="l-dist" title="Distribuent les feuilles aujourd'hui">📄 ${dist.map((t) => esc(t.name)).join(', ')}</button>` : ''}`;
   h += '</div>';
   if (mode === 'tables') {
     h += tablesEditorHTML(room) + '</main>';
@@ -904,7 +929,7 @@ function openStudent(c, stu) {
   const st = status(stu);
   const wk = S.events.filter((e) => e.s === stu.id && e.t >= weekStart()).sort((a, b) => b.t - a.t);
   const am = ''; // discrétion : rien n'indique les aménagements sur la feuille de saisie (les boutons non comptés sont seulement estompés)
-  openSheet(`<div class="sheet-h"><div><b>${esc(stu.name)}</b>${am}<div class="small muted">Cette semaine : ${st.negCounted.length} / ${S.settings.neg} remarque${st.negCounted.length > 1 ? 's' : ''} · ${st.posCounted.length} / ${st.posTh} positif${st.posCounted.length > 1 ? 's' : ''}${st.graves.length ? ' · <b style="color:var(--red)">fait grave à saisir</b>' : ''}</div></div><button class="ib" id="sh-x" aria-label="Fermer">✕</button></div>
+  openSheet(`<div class="sheet-h"><div><b>${esc(stu.name)}</b>${am}<div class="small muted">Cette semaine : ${st.negCounted.length} / ${S.settings.neg} remarque${st.negCounted.length > 1 ? 's' : ''} · ${st.posCounted.length} / ${st.posTh} positif${st.posCounted.length > 1 ? 's' : ''}${st.graves.length ? ' · <b style="color:var(--red)">fait grave à saisir</b>' : ''}${st.level ? ` · <b style="color:var(--red)">${LVL[st.level]}</b>` : ''}</div></div><button class="ib" id="sh-x" aria-label="Fermer">✕</button></div>
     <input type="text" class="note" id="sh-note" maxlength="160" placeholder="Précision (facultatif) : ce qui s'est passé, sans jugement">
     ${motifButtons(stu)}
     ${wk.length ? `<h3>Noté cette semaine</h3><ul class="hist">${wk.map((e) => `<li><span class="when">${dShort(e.t)} ${hm(e.t)}</span><span class="what">${motif(e.m).icon} ${esc(motif(e.m).label)}${e.n ? ` <span class="muted">— ${esc(e.n)}</span>` : ''}</span><button class="btn sm danger" data-rmev="${e.id}">✕ Enlever</button></li>`).join('')}</ul>` : ''}
@@ -943,7 +968,7 @@ function recordMany(c, studs, mid, note) {
   }
   let msg = `${m.icon} ${m.label} · ${plural(studs.length, 'élève')}`;
   if (notCounted.length) msg += ` (${notCounted.length} non compté${notCounted.length > 1 ? 's' : ''})`;
-  if (reached.length) msg += m.kind === 'pos' ? ` · encouragement à saisir : ${reached.join(', ')}` : ` · à saisir sur École Directe : ${reached.join(', ')}`;
+  if (reached.length) msg += m.kind === 'pos' ? ` · encouragement à saisir : ${reached.join(', ')}` : m.kind === 'grave' ? ` · à saisir sur École Directe : ${reached.join(', ')}` : ` · palier atteint (voir 📋 Suivi) : ${reached.join(', ')}`;
   closeSheet(); render();
   const ids = new Set(evs.map((e) => e.id));
   toast(msg, 'Annuler', () => { S.events = S.events.filter((x) => !ids.has(x.id)); save(); render(); toast('Annulé.'); }, 8000);
@@ -955,7 +980,7 @@ function record(c, stu, mid, note) {
   let msg = `${m.icon} ${m.label} · ${stu.name}`;
   if (m.kind === 'grave') msg += ' → à saisir sur École Directe';
   else if (m.kind === 'neg' && isAmenEvent(stu, e)) msg += ' · noté, non compté (aménagement)';
-  else if (m.kind === 'neg') msg += st.negCounted.length >= S.settings.neg ? ` · ${ord(st.negCounted.length)} remarque → à saisir sur École Directe` : ` · ${ord(st.negCounted.length)} remarque de la semaine`;
+  else if (m.kind === 'neg') msg += st.level ? ` · ${ord(st.negCounted.length)} remarque → ${LVL[st.level]}` : ` · ${ord(st.negCounted.length)} remarque de la semaine`;
   else if (m.kind === 'pos' && st.posCounted.length === st.posTh) msg += ' · palier atteint → encouragement à saisir';
   if (m.kind === 'pos') { const j = gaugeOf(c); if (j.full) msg += ' · 🏆 jauge pleine !'; }
   closeSheet(); render();
@@ -1092,8 +1117,9 @@ function edText(stu, type) {
   return `${stu.name} : encouragements. ` + st.posCounted.map((e) => `${motif(e.m).label.toLowerCase()} le ${dShort(e.t)}${e.n ? ` (${e.n})` : ''}`).join(', ') + '.';
 }
 function markDone(stu, type) {
-  S.done.push({ t: Date.now(), s: stu.id, type }); save();
-  toast(type === 'neg' ? `Saisi pour ${stu.name} : son compteur repart de zéro.` : `Encouragement saisi pour ${stu.name}.`, 'Annuler', () => { S.done.pop(); save(); render(); });
+  const st = status(stu);
+  S.done.push(type === 'neg' ? { t: Date.now(), s: stu.id, type, v2: 1, lvl: st.level || (st.graves.length ? 'grave' : 'obs') } : { t: Date.now(), s: stu.id, type }); save();
+  toast(type === 'neg' ? `C'est noté pour ${stu.name} : son compteur repart de zéro.` : `Encouragement saisi pour ${stu.name}.`, 'Annuler', () => { S.done.pop(); save(); render(); });
   render();
 }
 function renderSuivi() {
@@ -1105,10 +1131,10 @@ function renderSuivi() {
   const invisible = (now - (c.created || 0) > S.settings.invisibleDays * DAY) ? rows.filter((r) => now - r.st.lastAny > S.settings.invisibleDays * DAY) : [];
   const wk = S.events.filter((e) => e.c === c.id && e.t >= ws);
   const wPos = wk.filter((e) => motif(e.m).kind === 'pos').length, wNeg = wk.length - wPos;
-  const alertRow = (r, type) => `<div class="alert ${type === 'neg' ? 'red' : 'green'}"><div class="txt"><b>${esc(r.t.name)}</b> <span class="small muted">${type === 'neg' ? (r.st.graves.length ? `fait grave : ${r.st.graves.map((e) => esc(motif(e.m).label.toLowerCase())).join(', ')}` : '') + (r.st.graves.length && r.st.negCounted.length >= S.settings.neg ? ' · ' : '') + (r.st.negCounted.length >= S.settings.neg ? `${r.st.negCounted.length} remarques cette semaine` : '') : `${r.st.posCounted.length} positifs`}</span></div>
-    <div class="acts"><button class="btn sm" data-copy="${r.t.id}" data-type="${type}">Copier le texte</button><button class="btn sm primary" data-done="${r.t.id}" data-type="${type}">✔ Saisi sur École Directe</button></div></div>`;
+  const alertRow = (r, type) => `<div class="alert ${type === 'neg' ? 'red' : 'green'}"><div class="txt"><b>${esc(r.t.name)}</b>${type === 'neg' ? ` <b>${lvlLabel(r.st)}</b>${r.st.level && r.st.graves.length ? ' + fait grave' : ''}<br>` : ''} <span class="small muted">${type === 'neg' ? (r.st.graves.length ? `fait grave : ${r.st.graves.map((e) => esc(motif(e.m).label.toLowerCase())).join(', ')}` : '') + (r.st.graves.length && r.st.negCounted.length >= S.settings.neg ? ' · ' : '') + (r.st.negCounted.length >= S.settings.neg ? `${r.st.negCounted.length} remarques cette semaine` : '') : `${r.st.posCounted.length} positifs`}</span></div>
+    <div class="acts">${type === 'pos' || r.st.level !== 'travail' || r.st.graves.length ? `<button class="btn sm" data-copy="${r.t.id}" data-type="${type}">Copier le texte</button>` : ''}<button class="btn sm primary" data-done="${r.t.id}" data-type="${type}">${type === 'neg' ? '✔ Fait' : '✔ Saisi sur École Directe'}</button></div></div>`;
   let h = bar('Suivi · ' + esc(c.name), () => go({ name: 'lesson', c: c.id, r: c.lastRoom || '' })) + '<main class="wrap">';
-  h += '<h2>🔴 Observations à saisir sur École Directe</h2>' + (neg.length ? neg.map((r) => alertRow(r, 'neg')).join('') : `<p class="muted small">Personne n'a atteint le palier (${S.settings.neg} remarques dans la semaine, ou un fait grave).</p>`);
+  h += '<h2>🔴 Remarques : à faire</h2><p class="small muted">À chaque palier, un travail en plus. 1re fois : rien d\'autre. Encore la semaine suivante : mise en garde. Encore plus tard, ou après une mise en garde : observation École Directe (puis on repart de zéro).</p>' + (neg.length ? neg.map((r) => alertRow(r, 'neg')).join('') : `<p class="muted small">Personne n'a atteint le palier (${S.settings.neg} remarques dans la semaine, ou un fait grave).</p>`);
   h += '<h2>🟢 Encouragements à saisir</h2>' + (pos.length ? pos.map((r) => alertRow(r, 'pos')).join('') : `<p class="muted small">Personne n'a encore atteint le palier (${S.settings.pos} positifs en ${S.settings.posDays} jours${c.students.some((t) => t.amen) ? `, ${S.settings.posAmen} avec aménagements` : ''}).</p>`);
   if (valor.length) h += `<h2>✨ À valoriser</h2><p class="small muted">Élèves avec aménagements sans positif depuis ${S.settings.valorDays} jours : cherche une occasion de les encourager.</p><div class="chips">${valor.map((r) => `<button class="chip" data-open="${r.t.id}">${esc(r.t.name)}</button>`).join('')}</div>`;
   if (invisible.length) h += `<h2>👀 Pas vus depuis ${S.settings.invisibleDays} jours</h2><p class="small muted">Ni positif ni remarque : ce sont souvent les élèves discrets.</p><div class="chips">${invisible.map((r) => `<button class="chip" data-open="${r.t.id}">${esc(r.t.name)}</button>`).join('')}</div>`;
@@ -1138,7 +1164,8 @@ function renderEleve() {
   const counts = {}; for (const e of inPer) counts[e.m] = (counts[e.m] || 0) + 1;
   let h = bar(esc(stu.name) + ' · ' + esc(c.name), back) + '<main class="wrap">';
   h += `<div class="box">Cette semaine : <b>${st.negCounted.length} / ${S.settings.neg}</b> remarque(s) comptée(s) · <b>${st.posCounted.length} / ${st.posTh}</b> positif(s)${st.graves.length ? ' · <b style="color:var(--red)">fait grave</b>' : ''}
-    ${st.negAlert || st.posAlert ? `<div class="row">${st.negAlert ? '<button class="btn sm" data-copy="neg">Copier l\'observation</button><button class="btn sm primary" data-done="neg">✔ Observation saisie</button>' : ''}${st.posAlert ? '<button class="btn sm" data-copy="pos">Copier l\'encouragement</button><button class="btn sm primary" data-done="pos">✔ Encouragement saisi</button>' : ''}</div>` : ''}</div>`;
+    <div class="small">${st.negAlert ? `À faire : <b style="color:var(--red)">${lvlLabel(st)}</b>${st.level && st.graves.length ? ' + fait grave' : ''}` : `S'il atteint ${S.settings.neg} remarques cette semaine : ${LVL[st.next]}`}</div>
+    ${st.negAlert || st.posAlert ? `<div class="row">${st.negAlert ? `${st.level !== 'travail' || st.graves.length ? '<button class="btn sm" data-copy="neg">Copier le texte</button>' : ''}<button class="btn sm primary" data-done="neg">✔ Fait</button>` : ''}${st.posAlert ? '<button class="btn sm" data-copy="pos">Copier l\'encouragement</button><button class="btn sm primary" data-done="pos">✔ Encouragement saisi</button>' : ''}</div>` : ''}</div>`;
   h += `<h2>8 dernières semaines</h2><div class="box"><div class="chart">${weeks.map((w) => `<div class="wk"><div class="bars"><i class="bp" style="height:${w.p / mx * 100}%" title="${w.p} positif(s)"></i><i class="bn" style="height:${w.n / mx * 100}%" title="${w.n} remarque(s)"></i></div><span class="lab">${dShort(w.a)}</span></div>`).join('')}</div><span class="small muted">■ <span style="color:var(--green)">positifs</span> · ■ <span style="color:var(--or)">remarques</span>, par semaine (lundi indiqué)</span></div>`;
   h += `<h2>Par motif <select id="e-per" class="small"><option value="28"${per === 28 ? ' selected' : ''}>4 dernières semaines</option><option value="56"${per === 56 ? ' selected' : ''}>8 dernières semaines</option><option value="all"${per === 'all' ? ' selected' : ''}>depuis le début</option></select></h2>`;
   h += Object.keys(counts).length ? `<div class="chips">${Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([m, n]) => `<span class="chip">${motif(m).icon} ${esc(motif(m).label)} <b>${n}</b></span>`).join('')}</div>` : '<p class="muted small">Rien sur cette période.</p>';
@@ -1152,7 +1179,7 @@ function renderEleve() {
     <p class="small muted">À faire correspondre à ce qui est prévu dans son PAP ou PPS, en accord avec l'équipe. N'écris jamais de diagnostic.</p></details>`;
   // historique
   const items = [...evs.map((e) => ({ t: e.t, e })), ...done.map((d) => ({ t: d.t, d }))].sort((a, b) => b.t - a.t);
-  h += `<h2>Historique</h2><ul class="hist">${items.map((it) => it.e ? `<li><span class="when">${dShort(it.e.t)} ${hm(it.e.t)}</span><span class="what">${motif(it.e.m).icon} ${esc(motif(it.e.m).label)}${isAmenEvent(stu, it.e) ? '<span class="tag am">non compté</span>' : ''}${it.e.n ? ` <span class="muted">— ${esc(it.e.n)}</span>` : ''}</span><button class="x" data-del="${it.e.id}" aria-label="Enlever" title="Enlever">✕</button></li>` : `<li class="done"><span class="when">${dShort(it.d.t)} ${hm(it.d.t)}</span><span class="what">✔ ${it.d.type === 'neg' ? 'Observation' : 'Encouragement'} saisi sur École Directe</span></li>`).join('') || '<li class="muted">Rien pour l\'instant.</li>'}</ul>`;
+  h += `<h2>Historique</h2><ul class="hist">${items.map((it) => it.e ? `<li><span class="when">${dShort(it.e.t)} ${hm(it.e.t)}</span><span class="what">${motif(it.e.m).icon} ${esc(motif(it.e.m).label)}${isAmenEvent(stu, it.e) ? '<span class="tag am">non compté</span>' : ''}${it.e.n ? ` <span class="muted">— ${esc(it.e.n)}</span>` : ''}</span><button class="x" data-del="${it.e.id}" aria-label="Enlever" title="Enlever">✕</button></li>` : `<li class="done"><span class="when">${dShort(it.d.t)} ${hm(it.d.t)}</span><span class="what">✔ ${it.d.type !== 'neg' ? 'Encouragement saisi sur École Directe' : it.d.lvl && LVL[it.d.lvl] ? LVL[it.d.lvl] : 'Observation saisie sur École Directe'}</span></li>`).join('') || '<li class="muted">Rien pour l\'instant.</li>'}</ul>`;
   h += '</main>';
   mount(h, back);
   $('#e-per').onchange = (e) => { view.per = e.target.value === 'all' ? 'all' : Number(e.target.value); render(); };
@@ -1298,7 +1325,7 @@ function renderReglages() {
   const num = (k, min, max) => `<input type="number" data-set="${k}" min="${min}" max="${max}" value="${s[k]}">`;
   let h = bar('Motifs et paliers', () => go({ name: 'home' })) + '<main class="wrap">';
   h += `<h2>Paliers</h2><div class="box">
-    <p>🔴 Observation à saisir dès ${num('neg', 1, 20)} remarques dans la semaine (remise à zéro le lundi), ou dès un fait grave.</p>
+    <p>🔴 Palier à ${num('neg', 1, 20)} remarques dans la semaine (remise à zéro le lundi) : travail en plus à chaque fois, puis mise en garde ou observation selon le délai. Un fait grave : observation directe.</p>
     <p>🟢 Encouragement à saisir dès ${num('pos', 1, 30)} positifs en ${num('posDays', 3, 60)} jours.</p>
     <p>Avec aménagements : encouragement dès ${num('posAmen', 1, 30)} positifs ; « à valoriser » sans positif depuis ${num('valorDays', 1, 30)} jours.</p>
     <p>👀 Élèves « pas vus » : rien depuis ${num('invisibleDays', 3, 60)} jours.</p></div>`;
