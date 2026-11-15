@@ -10,7 +10,7 @@ Outil pour tablette ou téléphone : en deux touches, tu notes une remarque ou u
 - **Motif d'abord, puis les élèves** : tous les motifs sont affichés au-dessus du plan. Touche un motif (il passe en bleu), puis chaque élève concerné : c'est noté à chaque fois, sans autre étape. « ✕ Arrêter » pour revenir à la saisie normale.
 - **Jauge de classe** (🏆) : chaque point positif fait avancer la jauge de 1. Chaque remarque la fait reculer (½ point par défaut, réglable : 0, ½ ou 1). Tu peux ajouter des bonus pour toute la classe (＋1, ＋3). L'écran affiche l'objectif, la récompense et le ratio positifs / remarques, sans aucun prénom : il peut être projeté. Quand la jauge est pleine, « Récompense donnée » lance une nouvelle manche.
 - **Enlever une remarque** : touche l'élève, puis « ✕ Enlever » dans la liste « Noté cette semaine ». Pour une remarque plus ancienne : « Voir sa fiche » → Historique → ✕. Un bouton « Annuler » permet de revenir en arrière.
-- **Distribution des feuilles** : le bouton 📄 dans la barre du cours indique les 2 élèves qui distribuent aujourd'hui (ils ont aussi 📄 sur le plan). Ça tourne tout seul **une fois par jour**, par ordre alphabétique : au premier cours de la journée avec cette classe ; les autres cours du même jour gardent les mêmes élèves. Les jours sans cours et les vacances ne sautent personne. Touche le bouton pour remplacer un absent, choisir quelqu'un d'autre ou passer aux suivants tout de suite.
+- **Distribution des feuilles** : le bouton 📄 dans la barre du cours indique les 2 élèves qui distribuent aujourd'hui (ils ont aussi 📄 sur le plan). Ça tourne tout seul **une fois par jour de cours**, par ordre alphabétique : au premier cours de la journée avec cette classe ; les autres cours du même jour gardent les mêmes élèves. L'outil connaît l'emploi du temps École Directe (si la sauvegarde en ligne est active) : si tu ouvres la classe un jour où tu ne l'as pas en cours, ça ne change pas. Les jours sans cours et les vacances ne sautent personne. Touche le bouton pour remplacer un absent, choisir quelqu'un d'autre ou passer aux suivants tout de suite.
 - **Paliers** (modifiables dans ⚙️) :
   - 3 remarques dans la semaine (remise à zéro le lundi) : **un travail en plus à chaque fois**, et selon le délai :
     - la 1re fois : seulement le travail en plus ;
@@ -20,12 +20,13 @@ Outil pour tablette ou téléphone : en deux touches, tu notes une remarque ou u
   - Tout ce qu'il y a à faire est dans 📋 Suivi. La fiche de l'élève indique aussi ce qui arrivera s'il atteint le palier cette semaine.
   - 5 positifs en 14 jours : **encouragement à saisir**.
   - « ✔ Fait » / « ✔ Saisi » remet le compteur à zéro. « Copier le texte » prépare le texte à coller dans École Directe.
+  - **✉️ Mail parents** : le soir, un brouillon de mail aux 2 parents est préparé (en tenant compte de vos échanges précédents sur École Directe). Objet « Compliments » pour les encouragements (seulement si l'élève n'a pas de remarques). **Rien n'est envoyé** : relis, copie, colle dans la messagerie École Directe.
 - **Aménagements** (fiche de l'élève) : tu choisis les motifs qui sont notés mais pas comptés. Le palier positif descend à 3, et l'outil te rappelle de valoriser l'élève. Ils n'apparaissent jamais sur la fiche parents. N'écris jamais de diagnostic.
 - **Suivi de la classe** : qui reprendre, qui encourager, qui valoriser, les élèves « pas vus » depuis 14 jours, et l'équilibre entre positifs et remarques de la semaine.
 - **Fiche parents** : uniquement l'élève concerné, avec les faits datés. Tu peux l'imprimer, l'enregistrer en PDF ou la montrer sur l'écran.
 
 ## Sécurité et RGPD
-- **Tout reste sur l'appareil.** Rien n'est envoyé sur internet.
+- **Sauvegarde en ligne (facultative)** : 🔐 → « Sauvegarde en ligne ». Les données partent **chiffrées** dans ton dépôt GitHub **privé** (le même que le classeur du site sixième) et se retrouvent sur tes autres appareils. Si le classeur est déjà synchronisé sur l'appareil, c'est automatique ; sinon, tape ton code d'accès du site. Rien d'autre n'est envoyé sur internet.
 - Les données sont **chiffrées avec ton code**, que tu choisis à la première ouverture. Le **code de secours** affiché à ce moment-là sert si tu oublies ton code : note-le sur papier.
 - **Code** : il n'est pas redemandé quand tu changes d'onglet ou d'appli. Il l'est seulement après 15 minutes sans utiliser l'outil (réglable de 2 min à la fin de la journée), si tu fermes l'onglet, ou quand tu touches 🔒.
 - **🙈 Masquer** : cache l'écran derrière une horloge, sans code. Pour revenir, maintiens le doigt appuyé une seconde. Pratique quand un élève s'approche.

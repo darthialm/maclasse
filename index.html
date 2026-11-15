@@ -160,6 +160,7 @@ body:has(.multibar) #toast { bottom: 150px; }
 @media (min-width: 760px) { .overlay { align-items: center; } .sheet { border-radius: 18px; } }
 .sheet-h { display: flex; align-items: flex-start; gap: 8px; }
 .sheet-h > div { flex: 1; }
+.mailtxt { background: var(--soft); border-radius: 10px; padding: 10px 12px; margin: 8px 0; font-size: .95rem; line-height: 1.45; user-select: text; }
 .sheet-h b { font-size: 1.25rem; }
 .sheet .ib { background: var(--soft); color: var(--ink); }
 .mbtns { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
@@ -254,7 +255,7 @@ table.t tr.click { cursor: pointer; }
    Toutes les données restent sur l'appareil, chiffrées (AES-GCM) avec une clé
    protégée par le code du professeur (PBKDF2). Rien n'est envoyé sur internet.
    ========================================================= */
-const APP_VERSION = '2026-11-11.2';
+const APP_VERSION = '2026-11-15.1';
 const LS_KEYS = 'maclasse-cles', LS_DATA = 'maclasse-donnees', LS_TRY = 'maclasse-essais';
 const DAY = 864e5;
 const $ = (s, r = document) => r.querySelector(s);
@@ -305,7 +306,7 @@ async function persist() {
   if (!ls.set(LS_DATA, JSON.stringify(o))) toast('⚠ La mémoire de l\'appareil est pleine : fais une sauvegarde puis efface les anciennes remarques.');
 }
 let saveT = null;
-function save() { clearTimeout(saveT); saveT = setTimeout(() => { saveT = null; persist(); }, 200); }
+function save() { clearTimeout(saveT); saveT = setTimeout(() => { saveT = null; persist(); syPoke(); }, 200); }
 async function flush() { if (saveT) { clearTimeout(saveT); saveT = null; await persist(); } }
 async function openWith(raw) {
   RAW = raw; DK = await importDK(raw);
@@ -313,6 +314,7 @@ async function openWith(raw) {
   S = d ? JSON.parse(td.decode(await aesDec(DK, JSON.parse(d)))) : defaultState();
   migrate(S);
   touchSession(true);
+  syStart();
 }
 async function lock() {
   if (!S) return;
@@ -467,7 +469,10 @@ function distributors(c) {
   if (!c.students.length) return [];
   const d = c.dist, ok = (id) => c.students.some((t) => t.id === id);
   if (d && !d.day && d.seen) { d.day = dayKey(d.seen); delete d.seen; save(); } // anciennes données : on garde les élèves du jour
-  if (!d?.ids || !d.ids.length || !d.ids.every(ok) || d.day !== dayKey()) distNewDay(c);
+  // Nouveau jour : on ne passe aux suivants que si la classe a cours aujourd'hui (emploi du temps École Directe ;
+  // s'il est inconnu, comme avant : au premier jour où la classe est rouverte).
+  if (!d?.ids || !d.ids.length || !d.ids.every(ok)) distNewDay(c);
+  else if (d.day !== dayKey() && hasLesson(c) !== false) distNewDay(c);
   return c.dist.ids.map((id) => c.students.find((t) => t.id === id));
 }
 function openDist(c) {
@@ -477,9 +482,9 @@ function openDist(c) {
   const studs = c.students.slice().sort(byName);
   openSheet(`<div class="sheet-h"><div><b>📄 Distribution des feuilles</b><div class="small muted">${DIST_N} élèves par jour, à tour de rôle (ordre alphabétique).</div></div><button class="ib" id="ds-x" aria-label="Fermer">✕</button></div>
     <div class="box">${cur.map((t, i) => `<div class="row" style="margin:6px 0"><b style="flex:1">📄 ${esc(t.name)}</b><button class="btn sm" data-abs="${i}">Absent → remplacer</button><select data-pick="${i}" aria-label="Choisir un autre élève"><option value="">Choisir…</option>${studs.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select></div>`).join('')}
-    <span class="small muted">Prochain jour de cours : ${nx.map(nm).join(' et ')}</span></div>
+    <span class="small muted">${(() => { const nl = nextLesson(c); return nl ? `Prochain cours (${dLong(new Date(nl + 'T12:00'))})` : 'Prochain jour de cours'; })()} : ${nx.map(nm).join(' et ')}</span></div>
     <div class="row"><button class="btn" id="ds-next">⏭ Passer aux suivants maintenant</button></div>
-    <p class="small muted">Ça change tout seul une fois par jour, au premier cours de la journée avec cette classe. Les autres cours du même jour gardent les mêmes élèves.</p>`, (o) => {
+    <p class="small muted">Ça change tout seul au premier cours de la journée avec cette classe${edtOf(c) ? " (d'après l'emploi du temps École Directe : un jour sans cours avec elle, on ne change pas)" : ''}. Les autres cours du même jour gardent les mêmes élèves.</p>`, (o) => {
     const done = () => { save(); render(); openDist(c); };
     $('#ds-x', o).onclick = closeSheet;
     $('#ds-next', o).onclick = () => { distNewDay(c); done(); };
@@ -729,6 +734,173 @@ function badges(st) {
 }
 function alertCls(st) { return st.negAlert ? 'al-red' : st.negCounted.length === S.settings.neg - 1 && st.negCounted.length > 0 ? 'al-or' : st.posAlert ? 'al-pos' : ''; }
 
+/* ---------- Synchronisation en ligne (dépôt GitHub PRIVÉ du classeur, chiffré) ----------
+   Réutilise la synchronisation du site sixième (même adresse darthialm.github.io, donc même réglage) :
+   dépôt privé, jeton et clé AES-GCM tirée du code de synchronisation. Fichiers du dépôt :
+   - maclasse.json (écrit ici) : toutes les données de l'appli + la liste « à saisir sur École Directe » ;
+   - edt.json (écrit par l'API) : jours de cours de chaque classe (la distribution ne change qu'un jour de cours) ;
+   - mails.json (écrit par l'API) : brouillons de mails aux parents (rien n'est jamais envoyé automatiquement).
+   Rien d'autre ne sort de l'appareil. Fusion : remarques, positifs, saisies et classes des deux côtés ; un
+   élément supprimé d'un côté depuis la dernière synchro est supprimé ; pour le reste, cet appareil l'emporte. */
+const SY_CFG = 'revisions6e-classeur-sync', SY_STATE = 'maclasse-synchro', SY_EDT = 'maclasse-edt';
+const SY = { app: 'maclasse.json', edt: 'edt.json', mails: 'mails.json' };
+const SY_LOCAL = ['mails', 'lastBackup']; // propres à l'appareil ou venant de l'API : pas envoyés
+let syBusy = false, syTimer = null, syPokeT = null, syMsg = '';
+function syCfg() { try { const s = JSON.parse(ls.get(SY_CFG) || 'null'); return s && s.repo && s.token && s.key ? s : null; } catch (e) { return null; } }
+const syState = () => { try { return JSON.parse(ls.get(SY_STATE) || '{}'); } catch (e) { return {}; } };
+const sySetState = (s) => ls.set(SY_STATE, JSON.stringify(s));
+const syHeaders = (cfg) => ({ Authorization: 'Bearer ' + cfg.token, Accept: 'application/vnd.github+json' });
+async function syGet(cfg, file) {
+  const r = await fetch('https://api.github.com/repos/' + cfg.repo + '/contents/' + file, { cache: 'no-store', headers: syHeaders(cfg) });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error('GitHub ' + r.status);
+  const j = await r.json(); let b64 = j.content;
+  if (!b64 || j.encoding !== 'base64') {
+    const r2 = await fetch('https://api.github.com/repos/' + cfg.repo + '/git/blobs/' + j.sha, { cache: 'no-store', headers: syHeaders(cfg) });
+    if (!r2.ok) throw new Error('GitHub ' + r2.status); b64 = (await r2.json()).content;
+  }
+  return { sha: j.sha, file: JSON.parse(td.decode(fromB64(String(b64).replace(/\s/g, '')))) };
+}
+async function syPut(cfg, file, json, sha) {
+  const body = { message: 'maclasse : enregistrement du ' + new Date().toLocaleString('fr-FR'), content: toB64(te.encode(JSON.stringify(json))) };
+  if (sha) body.sha = sha;
+  const r = await fetch('https://api.github.com/repos/' + cfg.repo + '/contents/' + file, { method: 'PUT', cache: 'no-store', headers: { ...syHeaders(cfg), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(r.status === 409 || r.status === 422 ? 'conflit, nouvel essai bientôt' : 'GitHub ' + r.status);
+  return (await r.json()).content.sha;
+}
+const syKey = (cfg) => crypto.subtle.importKey('raw', fromB64(cfg.key), 'AES-GCM', false, ['encrypt', 'decrypt']);
+async function syOpen(key, f, type) {
+  if (!f || f.type !== type) throw new Error('fichier ' + type + ' inattendu');
+  const u = fromB64(f.data);
+  return JSON.parse(td.decode(new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.slice(0, 12) }, key, u.slice(12)))));
+}
+async function sySeal(key, type, payload) {
+  const iv = rnd(12), ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, te.encode(JSON.stringify(payload))));
+  const u = new Uint8Array(12 + ct.length); u.set(iv); u.set(ct, 12);
+  return { type, v: 1, date: new Date().toISOString(), data: toB64(u) };
+}
+function sySnapshot() { const o = {}; for (const k of Object.keys(S)) if (!SY_LOCAL.includes(k)) o[k] = S[k]; return JSON.parse(JSON.stringify(o)); }
+async function syHash(o) { return toB64(await crypto.subtle.digest('SHA-256', te.encode(JSON.stringify(o)))); }
+const evKey = (e) => e.id, dnKey = (d) => `${d.t}|${d.s}|${d.type}`, clKey = (c) => c.id;
+function syBase(o) { return { ev: (o.events || []).map(evKey), dn: (o.done || []).map(dnKey), cl: (o.classes || []).map(clKey) }; }
+/** Fusion d'une liste : base = clés présentes en ligne à la dernière synchro réussie */
+function syMergeList(loc, rem, key, base) {
+  const b = new Set(base || []), L = new Map(loc.map((x) => [key(x), x])), Rm = new Map(rem.map((x) => [key(x), x]));
+  const out = [];
+  for (const [k, x] of L) if (Rm.has(k) || !b.has(k)) out.push(x); // présent des deux côtés, ou ajouté ici
+  for (const [k, x] of Rm) if (!L.has(k) && !b.has(k)) out.push(x); // ajouté sur l'autre appareil
+  return out;
+}
+function syMerge(loc, rem, base) {
+  const out = { ...rem, ...loc };
+  out.events = syMergeList(loc.events || [], rem.events || [], evKey, base.ev).sort((a, b) => a.t - b.t);
+  out.done = syMergeList(loc.done || [], rem.done || [], dnKey, base.dn).sort((a, b) => a.t - b.t);
+  out.classes = syMergeList(loc.classes || [], rem.classes || [], clKey, base.cl);
+  return out;
+}
+/** Élèves à saisir sur École Directe (lu par l'API pour préparer les mails aux parents) */
+function aSaisir() {
+  const out = [], now = Date.now();
+  for (const c of S.classes) for (const t of c.students) {
+    const st = status(t, now);
+    if (st.negAlert) {
+      const evs = [...st.negCounted, ...st.graves];
+      out.push({ cls: c.id, classe: c.name, sid: t.id, eleve: t.name, type: 'neg', niveau: st.graves.length && (!st.level || st.level === 'travail') ? 'grave' : st.level, texte: edText(t, 'neg'), remarques: evs.length, depuis: Math.min(...evs.map((e) => e.t)) });
+    }
+    if (st.posAlert) {
+      const rem = S.events.filter((e) => e.s === t.id && motif(e.m).kind !== 'pos' && !isAmenEvent(t, e) && e.t >= now - S.settings.posDays * DAY).length;
+      out.push({ cls: c.id, classe: c.name, sid: t.id, eleve: t.name, type: 'pos', niveau: null, texte: edText(t, 'pos'), remarques: rem, depuis: Math.min(...st.posCounted.map((e) => e.t)) });
+    }
+  }
+  return out;
+}
+function syApply(o) {
+  for (const k of Object.keys(S)) if (!SY_LOCAL.includes(k) && !(k in o)) delete S[k];
+  Object.assign(S, o); migrate(S); persist();
+  if (view.c && !cls(view.c)) view = { name: 'home' };
+  if (!$('#overlay')) render();
+}
+/** Synchronise (silencieux : l'appli marche aussi sans internet). */
+async function sync(force) {
+  const cfg = syCfg();
+  if (!cfg || !S || syBusy) return;
+  syBusy = true;
+  try {
+    const key = await syKey(cfg), st = syState();
+    const local = sySnapshot(), hLocal = await syHash(local);
+    const remote = await syGet(cfg, SY.app);
+    const localChanged = hLocal !== st.hash, remoteChanged = !!remote && remote.sha !== st.sha;
+    if (remoteChanged) {
+      const rem = (await syOpen(key, remote.file, 'maclasse-sync')).S || {};
+      syApply(localChanged ? syMerge(local, rem, st.sha ? st.base || {} : {}) : rem);
+    }
+    const now = sySnapshot(), hNow = await syHash(now);
+    let sha = remote?.sha || null;
+    if (!remote || localChanged || force || st.day !== dayKey()) {
+      sha = await syPut(cfg, SY.app, await sySeal(key, 'maclasse-sync', { app: APP_VERSION, S: now, aSaisir: aSaisir() }), remote?.sha);
+    }
+    sySetState({ ...syState(), sha, hash: hNow, base: syBase(now), last: Date.now(), day: dayKey() });
+    await syExtras(cfg, key, force);
+    syMsg = 'Synchronisé (dépôt privé, chiffré) à ' + hm(Date.now()) + '.';
+  } catch (e) {
+    syMsg = 'Synchronisation impossible pour l\'instant (' + e.message + '). Nouvel essai automatique.';
+  } finally { syBusy = false; }
+}
+/** Emploi du temps et brouillons de mails publiés par l'API (au plus toutes les 10 min) */
+async function syExtras(cfg, key, force) {
+  if (!force && Date.now() - (syState().extras || 0) < 10 * 60000) return;
+  const [edt, mails] = await Promise.all([syGet(cfg, SY.edt).catch(() => null), syGet(cfg, SY.mails).catch(() => null)]);
+  if (edt) { try { ls.set(SY_EDT, JSON.stringify(await syOpen(key, edt.file, 'edt-6e'))); } catch (e) { /* illisible : on garde l'ancien */ } }
+  if (mails) { try { const m = await syOpen(key, mails.file, 'mails-6e'); S.mails = { date: mails.file.date, list: m.brouillons || [] }; persist(); } catch (e) { /* rien */ } }
+  sySetState({ ...syState(), extras: Date.now() });
+}
+function syPoke() { if (!syCfg()) return; clearTimeout(syPokeT); syPokeT = setTimeout(() => sync(), 4000); }
+function syStart() {
+  if (syTimer || !syCfg()) return;
+  sync();
+  syTimer = setInterval(() => { if (document.visibilityState === 'visible' && S) sync(); }, 60000);
+  document.addEventListener('visibilitychange', () => { if (S) sync(); });
+}
+/** Code d'accès « partout » du site sixième : configure la synchronisation sur un nouvel appareil */
+async function accesOuvrir(code) {
+  const r = await fetch('../sixieme/acces.json', { cache: 'no-store' });
+  if (!r.ok) throw new Error('fichier d\'accès introuvable');
+  const a = await r.json();
+  const base = await crypto.subtle.importKey('raw', te.encode(code.trim()), 'PBKDF2', false, ['deriveKey']);
+  const k = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: fromB64(a.salt), iterations: a.iter, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  const u = fromB64(a.data);
+  const d = JSON.parse(td.decode(new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.slice(0, 12) }, k, u.slice(12)))));
+  const cur = syCfg();
+  if (!cur || cur.repo !== d.repo || cur.key !== d.key) ls.set(SY_CFG, JSON.stringify({ repo: d.repo, token: d.token, salt: d.salt, key: d.key, sha: null, dirty: false, last: 0 }));
+  if (d.docKey) ls.set('revisions6e-classeur-cle', d.docKey);
+}
+/* ---------- Emploi du temps (edt.json, publié par l'API) ---------- */
+function edtData() { try { return JSON.parse(ls.get(SY_EDT) || 'null'); } catch (e) { return null; } }
+const normN = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+function edtOf(c) {
+  const d = edtData(); if (!d) return null;
+  if (d.parClasse?.[c.id]) return { ...d.parClasse[c.id], debut: d.debut, fin: d.fin };
+  const n = normN(c.name);
+  const hits = (d.ed || []).filter((e) => { const stem = normN(e.label).replace(/\d+/g, '').trim().split(' ').sort((a, b) => b.length - a.length)[0]?.slice(0, 5); return stem && n.includes(stem); });
+  return hits.length === 1 ? { ed: hits[0].label, jours: hits[0].jours, debut: d.debut, fin: d.fin } : null;
+}
+/** true / false si l'emploi du temps couvre ce jour, null s'il est inconnu */
+function hasLesson(c, day = dayKey()) { const e = edtOf(c); if (!e || day < e.debut || day > e.fin) return null; return !!e.jours[day]; }
+function nextLesson(c, after = dayKey()) { const e = edtOf(c); if (!e) return null; return Object.keys(e.jours).sort().find((d) => d > after) || null; }
+/* ---------- Brouillons de mails aux parents (mails.json, préparés par l'API) ---------- */
+const mailFor = (sid, type) => (S.mails && Date.parse(S.mails.date) > lastDone(sid, type) ? S.mails.list : []).find((b) => b.sid === sid && b.type === type) || null;
+function openMail(stu, type) {
+  const b = mailFor(stu.id, type); if (!b) return;
+  openSheet(`<div class="sheet-h"><div><b>✉️ Mail aux parents de ${esc(stu.name)}</b><div class="small muted">Brouillon préparé le ${dFull(S.mails.date)}. Rien n'est envoyé : relis-le, puis colle-le dans la messagerie École Directe.</div></div><button class="ib" id="ml-x" aria-label="Fermer">✕</button></div>
+    <div class="box"><p class="small"><b>À :</b> ${b.destinataires.map(esc).join(', ') || 'les 2 responsables'}</p>
+    <p class="small"><b>Objet :</b> ${esc(b.objet)} <button class="btn sm" id="ml-o">Copier l'objet</button></p>
+    <div class="mailtxt">${esc(b.corps).replace(/\n/g, '<br>')}</div>
+    <div class="row"><button class="btn primary" id="ml-c">Copier le message</button></div></div>`, (o) => {
+    $('#ml-x', o).onclick = closeSheet;
+    $('#ml-o', o).onclick = (e) => copyText(b.objet, e.target);
+    $('#ml-c', o).onclick = (e) => copyText(b.corps, e.target);
+  });
+}
 /* ---------- Rendu ---------- */
 function render() {
   if (!hasKeys()) return renderSetup();
@@ -843,7 +1015,7 @@ function renderHome() {
   h += '<div class="cards">' + S.classes.map((c) => { const a = classAlerts(c); return `<button class="card" data-c="${c.id}"><b>${esc(c.name)}</b><span class="muted small">${plural(c.students.length, 'élève')}</span>${a.neg ? `<span class="pill red">${a.neg} à saisir</span>` : ''}${a.pos ? `<span class="pill green">${plural(a.pos, 'encouragement')}</span>` : ''}</button>`; }).join('') + '</div>';
   h += '<div class="row"><button class="btn primary" id="h-new">＋ Nouvelle classe</button></div>';
   h += `<nav class="menu"><button class="mi" id="h-rooms">🏫 Mes salles <span class="muted">(${S.rooms.length})</span></button><button class="mi" id="h-set">⚙️ Motifs, paliers et fiche parents</button><button class="mi" id="h-sec">🔐 Code, sauvegarde et effacement</button></nav>`;
-  h += `<p class="foot muted small">Données sur cet appareil uniquement, chiffrées avec ton code · Note des faits, pas des jugements · v${APP_VERSION}</p></main>`;
+  h += `<p class="foot muted small">${syCfg() ? 'Données chiffrées, sauvegardées en ligne dans ton dépôt privé' : 'Données sur cet appareil uniquement, chiffrées avec ton code'} · Note des faits, pas des jugements · v${APP_VERSION}</p></main>`;
   mount(h);
   $$('.card[data-c]').forEach((b) => { b.onclick = () => { const c = cls(b.dataset.c); go({ name: 'lesson', c: c.id, r: c.lastRoom && S.rooms.some((r) => r.id === c.lastRoom) ? c.lastRoom : (S.rooms[0]?.id || '') }); }; });
   $('#h-new').onclick = () => go({ name: 'classe', c: null });
@@ -1132,7 +1304,7 @@ function renderSuivi() {
   const wk = S.events.filter((e) => e.c === c.id && e.t >= ws);
   const wPos = wk.filter((e) => motif(e.m).kind === 'pos').length, wNeg = wk.length - wPos;
   const alertRow = (r, type) => `<div class="alert ${type === 'neg' ? 'red' : 'green'}"><div class="txt"><b>${esc(r.t.name)}</b>${type === 'neg' ? ` <b>${lvlLabel(r.st)}</b>${r.st.level && r.st.graves.length ? ' + fait grave' : ''}<br>` : ''} <span class="small muted">${type === 'neg' ? (r.st.graves.length ? `fait grave : ${r.st.graves.map((e) => esc(motif(e.m).label.toLowerCase())).join(', ')}` : '') + (r.st.graves.length && r.st.negCounted.length >= S.settings.neg ? ' · ' : '') + (r.st.negCounted.length >= S.settings.neg ? `${r.st.negCounted.length} remarques cette semaine` : '') : `${r.st.posCounted.length} positifs`}</span></div>
-    <div class="acts">${type === 'pos' || r.st.level !== 'travail' || r.st.graves.length ? `<button class="btn sm" data-copy="${r.t.id}" data-type="${type}">Copier le texte</button>` : ''}<button class="btn sm primary" data-done="${r.t.id}" data-type="${type}">${type === 'neg' ? '✔ Fait' : '✔ Saisi sur École Directe'}</button></div></div>`;
+    <div class="acts">${type === 'pos' || r.st.level !== 'travail' || r.st.graves.length ? `<button class="btn sm" data-copy="${r.t.id}" data-type="${type}">Copier le texte</button>` : ''}${mailFor(r.t.id, type) ? `<button class="btn sm" data-mail="${r.t.id}" data-type="${type}">✉️ Mail parents</button>` : ''}<button class="btn sm primary" data-done="${r.t.id}" data-type="${type}">${type === 'neg' ? '✔ Fait' : '✔ Saisi sur École Directe'}</button></div></div>`;
   let h = bar('Suivi · ' + esc(c.name), () => go({ name: 'lesson', c: c.id, r: c.lastRoom || '' })) + '<main class="wrap">';
   h += '<h2>🔴 Remarques : à faire</h2><p class="small muted">À chaque palier, un travail en plus. 1re fois : rien d\'autre. Encore la semaine suivante : mise en garde. Encore plus tard, ou après une mise en garde : observation École Directe (puis on repart de zéro).</p>' + (neg.length ? neg.map((r) => alertRow(r, 'neg')).join('') : `<p class="muted small">Personne n'a atteint le palier (${S.settings.neg} remarques dans la semaine, ou un fait grave).</p>`);
   h += '<h2>🟢 Encouragements à saisir</h2>' + (pos.length ? pos.map((r) => alertRow(r, 'pos')).join('') : `<p class="muted small">Personne n'a encore atteint le palier (${S.settings.pos} positifs en ${S.settings.posDays} jours${c.students.some((t) => t.amen) ? `, ${S.settings.posAmen} avec aménagements` : ''}).</p>`);
@@ -1146,6 +1318,7 @@ function renderSuivi() {
   const stu = (id) => c.students.find((t) => t.id === id);
   $$('[data-copy]').forEach((b) => { b.onclick = () => copyText(edText(stu(b.dataset.copy), b.dataset.type), b); });
   $$('[data-done]').forEach((b) => { b.onclick = () => markDone(stu(b.dataset.done), b.dataset.type); });
+  $$('[data-mail]').forEach((b) => { b.onclick = () => openMail(stu(b.dataset.mail), b.dataset.type); });
   $$('[data-open]').forEach((b) => { b.onclick = () => go({ name: 'eleve', c: c.id, s: b.dataset.open, back: { name: 'suivi', c: c.id } }); });
 }
 
@@ -1381,6 +1554,8 @@ function renderSecurite() {
   let h = bar('Code et sauvegarde', () => go({ name: 'home' })) + '<main class="wrap">';
   h += `<h2>💾 Sauvegarde</h2><div class="box"><p class="small">${S.lastBackup ? `Dernière sauvegarde : ${dLong(S.lastBackup)}.` : 'Aucune sauvegarde pour l\'instant.'} Si l'appareil est perdu ou réinitialisé, c'est le seul moyen de tout retrouver. Le fichier est chiffré : il faut ton code pour l'ouvrir.</p>
     <div class="row"><button class="btn primary" id="x-save">Sauvegarder maintenant</button><label class="btn">Restaurer un fichier<input type="file" id="x-file" accept=".json,application/json" hidden></label></div></div>`;
+  h += `<h2>☁️ Sauvegarde en ligne</h2><div class="box">${syCfg() ? `<p class="small">Active : tes données sont enregistrées chiffrées dans ton dépôt GitHub privé (le même que le classeur) et retrouvées sur tes autres appareils. ${esc(syMsg)}</p><div class="row"><button class="btn" id="x-sync">Synchroniser maintenant</button></div>` : `<p class="small">Pas encore active sur cet appareil. Tape ton code d'accès du site sixième (celui qui marche partout) :</p><form id="x-acc" class="row"><input type="password" id="x-acc-c" autocomplete="off" placeholder="Code d'accès"><button class="btn primary">Activer</button></form><p class="small" id="x-acc-m"></p>`}
+    <p class="small muted">Sert aussi à l'emploi du temps (distribution des feuilles) et aux brouillons de mails aux parents préparés le soir. Rien n'est jamais envoyé aux parents sans toi.</p></div>`;
   h += `<h2>🔒 Verrouillage</h2><div class="box"><label>Redemander le code si je n'ai pas utilisé l'outil depuis <select id="x-lock">${[[2, '2 min'], [5, '5 min'], [15, '15 min'], [30, '30 min'], [60, '1 heure'], [-1, 'la fin de la journée']].map(([m, l]) => `<option value="${m}"${s.lockMin === m ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
     <p class="small muted">Changer d'onglet ou d'appli ne verrouille pas : le code n'est redemandé qu'après ce délai sans utiliser l'outil, ou si tu fermes l'onglet. 🔒 verrouille tout de suite. 🙈 cache l'écran sans code (maintiens le doigt appuyé pour revenir). Garde le verrouillage de ta tablette activé.</p></div>`;
   h += `<h2>🔑 Changer de code</h2><div class="box"><form id="x-code"><label class="f"><span>Code actuel</span><input type="password" id="x-c0" autocomplete="current-password"></label><label class="f"><span>Nouveau code (6 caractères minimum)</span><input type="password" id="x-c1" autocomplete="new-password"></label><label class="f"><span>Retape le nouveau code</span><input type="password" id="x-c2" autocomplete="new-password"></label><p class="small" id="x-msg" style="color:var(--red)"></p><button class="btn">Changer</button></form>
@@ -1391,6 +1566,12 @@ function renderSecurite() {
   h += '</main>';
   mount(h, () => go({ name: 'home' }));
   $('#x-save').onclick = exportBackup;
+  const xs = $('#x-sync'); if (xs) xs.onclick = async () => { xs.disabled = true; xs.textContent = 'Synchronisation…'; await sync(true); render(); };
+  const xa = $('#x-acc'); if (xa) xa.onsubmit = async (e) => {
+    e.preventDefault(); const m = $('#x-acc-m'); m.textContent = 'Vérification…';
+    try { await accesOuvrir($('#x-acc-c').value); } catch (err) { m.textContent = 'Code incorrect ou pas de connexion.'; return; }
+    syStart(); await sync(true); render(); toast('Sauvegarde en ligne activée.');
+  };
   $('#x-file').onclick = () => { fileOpUntil = Date.now() + 120000; };
   $('#x-file').onchange = importFile;
   $('#x-lock').onchange = (e) => { s.lockMin = Number(e.target.value); save(); touchSession(true); bump(); };
