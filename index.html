@@ -255,7 +255,7 @@ table.t tr.click { cursor: pointer; }
    Toutes les données restent sur l'appareil, chiffrées (AES-GCM) avec une clé
    protégée par le code du professeur (PBKDF2). Rien n'est envoyé sur internet.
    ========================================================= */
-const APP_VERSION = '2026-11-15.1';
+const APP_VERSION = '2026-11-18.1';
 const LS_KEYS = 'maclasse-cles', LS_DATA = 'maclasse-donnees', LS_TRY = 'maclasse-essais';
 const DAY = 864e5;
 const $ = (s, r = document) => r.querySelector(s);
@@ -392,12 +392,14 @@ function defaultState() {
   return {
     v: 1, created: Date.now(), classes: [], rooms: [], plans: {}, events: [], done: [], lastBackup: 0,
     motifs: DEFAULT_MOTIFS.map((m) => ({ ...m })),
-    settings: { neg: 3, pos: 5, posAmen: 3, posDays: 14, valorDays: 7, invisibleDays: 14, lockMin: 15, prof: '', etab: '', view: 'back' },
+    settings: { neg: 3, pos: 5, posAmen: 3, posWeeks: 2, valorDays: 7, invisibleDays: 14, lockMin: 15, prof: '', etab: '', view: 'back' },
   };
 }
 function migrate(s) {
   const d = defaultState();
   for (const k of Object.keys(d)) if (s[k] === undefined) s[k] = d[k];
+  if (s.settings.posWeeks === undefined && s.settings.posDays) s.settings.posWeeks = Math.min(8, Math.max(1, Math.round(s.settings.posDays / 7))); // ancien réglage en jours
+  delete s.settings.posDays;
   s.settings = { ...d.settings, ...s.settings };
   if (!s.settings.lockV2) { s.settings.lockV2 = 1; if (s.settings.lockMin === 3) s.settings.lockMin = 15; if (s.settings.lockMin === 0) s.settings.lockMin = -1; }
   for (const r of s.rooms) migrateRoom(r, s.plans);
@@ -429,6 +431,9 @@ function negSteps(stu, extra) { // { semaine: 'travail' | 'garde' | 'obs' }, en 
   }
   return out;
 }
+/** Positifs : comptés sur des semaines entières (lundi → dimanche), celle-ci comprise. Rien ne disparaît en cours de semaine. */
+function posFrom(now = Date.now()) { return weekStart(now - ((S.settings.posWeeks || 2) - 1) * 7 * DAY); }
+const posWin = () => (S.settings.posWeeks || 2) > 1 ? `${S.settings.posWeeks} semaines` : 'la semaine';
 function lvlLabel(st) { return st.level ? LVL[st.level] : st.graves.length ? '🔴 Observation École Directe (fait grave)' : ''; }
 function status(stu, now = Date.now()) {
   const evs = S.events.filter((e) => e.s === stu.id);
@@ -436,7 +441,7 @@ function status(stu, now = Date.now()) {
   const kind = (e) => motif(e.m).kind;
   const negCounted = evs.filter((e) => kind(e) === 'neg' && e.t >= ws && e.t > dn && !isAmenEvent(stu, e));
   const graves = evs.filter((e) => kind(e) === 'grave' && e.t > dn && e.t > now - 30 * DAY);
-  const posCounted = evs.filter((e) => kind(e) === 'pos' && e.t >= now - S.settings.posDays * DAY && e.t > dp);
+  const posCounted = evs.filter((e) => kind(e) === 'pos' && e.t >= posFrom(now) && e.t > dp);
   const posTh = stu.amen ? S.settings.posAmen : S.settings.pos;
   const lastPos = evs.reduce((m, e) => (kind(e) === 'pos' && e.t > m ? e.t : m), 0);
   const lastAny = evs.reduce((m, e) => Math.max(m, e.t), 0);
@@ -808,7 +813,7 @@ function aSaisir() {
       out.push({ cls: c.id, classe: c.name, sid: t.id, eleve: t.name, type: 'neg', niveau: st.graves.length && (!st.level || st.level === 'travail') ? 'grave' : st.level, texte: edText(t, 'neg'), remarques: evs.length, depuis: Math.min(...evs.map((e) => e.t)) });
     }
     if (st.posAlert) {
-      const rem = S.events.filter((e) => e.s === t.id && motif(e.m).kind !== 'pos' && !isAmenEvent(t, e) && e.t >= now - S.settings.posDays * DAY).length;
+      const rem = S.events.filter((e) => e.s === t.id && motif(e.m).kind !== 'pos' && !isAmenEvent(t, e) && e.t >= posFrom(now)).length;
       out.push({ cls: c.id, classe: c.name, sid: t.id, eleve: t.name, type: 'pos', niveau: null, texte: edText(t, 'pos'), remarques: rem, depuis: Math.min(...st.posCounted.map((e) => e.t)) });
     }
   }
@@ -1307,12 +1312,12 @@ function renderSuivi() {
     <div class="acts">${type === 'pos' || r.st.level !== 'travail' || r.st.graves.length ? `<button class="btn sm" data-copy="${r.t.id}" data-type="${type}">Copier le texte</button>` : ''}${mailFor(r.t.id, type) ? `<button class="btn sm" data-mail="${r.t.id}" data-type="${type}">✉️ Mail parents</button>` : ''}<button class="btn sm primary" data-done="${r.t.id}" data-type="${type}">${type === 'neg' ? '✔ Fait' : '✔ Saisi sur École Directe'}</button></div></div>`;
   let h = bar('Suivi · ' + esc(c.name), () => go({ name: 'lesson', c: c.id, r: c.lastRoom || '' })) + '<main class="wrap">';
   h += '<h2>🔴 Remarques : à faire</h2><p class="small muted">À chaque palier, un travail en plus. 1re fois : rien d\'autre. Encore la semaine suivante : mise en garde. Encore plus tard, ou après une mise en garde : observation École Directe (puis on repart de zéro).</p>' + (neg.length ? neg.map((r) => alertRow(r, 'neg')).join('') : `<p class="muted small">Personne n'a atteint le palier (${S.settings.neg} remarques dans la semaine, ou un fait grave).</p>`);
-  h += '<h2>🟢 Encouragements à saisir</h2>' + (pos.length ? pos.map((r) => alertRow(r, 'pos')).join('') : `<p class="muted small">Personne n'a encore atteint le palier (${S.settings.pos} positifs en ${S.settings.posDays} jours${c.students.some((t) => t.amen) ? `, ${S.settings.posAmen} avec aménagements` : ''}).</p>`);
+  h += '<h2>🟢 Encouragements à saisir</h2>' + (pos.length ? pos.map((r) => alertRow(r, 'pos')).join('') : `<p class="muted small">Personne n'a encore atteint le palier (${S.settings.pos} positifs sur ${posWin()}${c.students.some((t) => t.amen) ? `, ${S.settings.posAmen} avec aménagements` : ''}).</p>`);
   if (valor.length) h += `<h2>✨ À valoriser</h2><p class="small muted">Élèves avec aménagements sans positif depuis ${S.settings.valorDays} jours : cherche une occasion de les encourager.</p><div class="chips">${valor.map((r) => `<button class="chip" data-open="${r.t.id}">${esc(r.t.name)}</button>`).join('')}</div>`;
   if (invisible.length) h += `<h2>👀 Pas vus depuis ${S.settings.invisibleDays} jours</h2><p class="small muted">Ni positif ni remarque : ce sont souvent les élèves discrets.</p><div class="chips">${invisible.map((r) => `<button class="chip" data-open="${r.t.id}">${esc(r.t.name)}</button>`).join('')}</div>`;
   h += `<h2>Cette semaine</h2><div class="box"><b>${plural(wPos, 'positif')}</b> · <b>${plural(wNeg, 'remarque')}</b> (faits graves compris)<div class="balance">${wPos + wNeg ? `<i class="bp" style="width:${wPos / (wPos + wNeg) * 100}%"></i><i class="bn" style="width:${wNeg / (wPos + wNeg) * 100}%"></i>` : ''}</div><span class="small muted">Repère : viser nettement plus de positif que de remarques.</span></div>`;
   const sorted = rows.slice().sort((a, b) => (b.st.graves.length * 10 + b.st.negCounted.length) - (a.st.graves.length * 10 + a.st.negCounted.length) || a.t.name.localeCompare(b.t.name, 'fr'));
-  h += `<div class="tw"><table class="t"><thead><tr><th>Élève</th><th>Remarques (semaine)</th><th>Positifs (${S.settings.posDays} j)</th><th></th></tr></thead><tbody>${sorted.map((r) => `<tr class="click" data-open="${r.t.id}"><td><b>${esc(r.t.name)}</b>${r.t.amen ? ' <span class="tag am">am.</span>' : ''}</td><td>${r.st.graves.length ? '<i class="d g">!</i> ' : ''}${r.st.negCounted.length} / ${S.settings.neg}</td><td>${r.st.posCounted.length} / ${r.st.posTh}</td><td>›</td></tr>`).join('')}</tbody></table></div>`;
+  h += `<div class="tw"><table class="t"><thead><tr><th>Élève</th><th>Remarques (semaine)</th><th>Positifs (${posWin()})</th><th></th></tr></thead><tbody>${sorted.map((r) => `<tr class="click" data-open="${r.t.id}"><td><b>${esc(r.t.name)}</b>${r.t.amen ? ' <span class="tag am">am.</span>' : ''}</td><td>${r.st.graves.length ? '<i class="d g">!</i> ' : ''}${r.st.negCounted.length} / ${S.settings.neg}</td><td>${r.st.posCounted.length} / ${r.st.posTh}</td><td>›</td></tr>`).join('')}</tbody></table></div>`;
   h += '</main>';
   mount(h, () => go({ name: 'lesson', c: c.id, r: c.lastRoom || '' }));
   const stu = (id) => c.students.find((t) => t.id === id);
@@ -1499,7 +1504,7 @@ function renderReglages() {
   let h = bar('Motifs et paliers', () => go({ name: 'home' })) + '<main class="wrap">';
   h += `<h2>Paliers</h2><div class="box">
     <p>🔴 Palier à ${num('neg', 1, 20)} remarques dans la semaine (remise à zéro le lundi) : travail en plus à chaque fois, puis mise en garde ou observation selon le délai. Un fait grave : observation directe.</p>
-    <p>🟢 Encouragement à saisir dès ${num('pos', 1, 30)} positifs en ${num('posDays', 3, 60)} jours.</p>
+    <p>🟢 Encouragement à saisir dès ${num('pos', 1, 30)} positifs sur ${num('posWeeks', 1, 8)} semaine(s) entière(s), celle-ci comprise (on compte depuis le lundi : rien ne disparaît en cours de semaine).</p>
     <p>Avec aménagements : encouragement dès ${num('posAmen', 1, 30)} positifs ; « à valoriser » sans positif depuis ${num('valorDays', 1, 30)} jours.</p>
     <p>👀 Élèves « pas vus » : rien depuis ${num('invisibleDays', 3, 60)} jours.</p></div>`;
   h += `<h2>Plan de classe</h2><div class="box"><label class="row"><input type="radio" name="vw" value="back"${s.view !== 'desk' ? ' checked' : ''}> Vu depuis le fond (tableau en haut)</label><label class="row"><input type="radio" name="vw" value="desk"${s.view === 'desk' ? ' checked' : ''}> Vu depuis le bureau (tableau en bas)</label></div>`;

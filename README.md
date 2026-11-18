@@ -18,7 +18,7 @@ Outil pour tablette ou téléphone : en deux touches, tu notes une remarque ou u
     - si ça recommence **plus tard**, ou après une mise en garde : **observation sur École Directe** (+ travail en plus). Ensuite, on repart de zéro.
   - Un fait grave : **observation à saisir sur École Directe** tout de suite.
   - Tout ce qu'il y a à faire est dans 📋 Suivi. La fiche de l'élève indique aussi ce qui arrivera s'il atteint le palier cette semaine.
-  - 5 positifs en 14 jours : **encouragement à saisir**.
+  - 5 positifs sur **2 semaines entières** (la semaine en cours et la précédente, du lundi au dimanche) : **encouragement à saisir**. Les points ne disparaissent jamais en cours de semaine : le lundi, la plus ancienne des deux semaines s'efface. Le nombre de semaines se règle dans ⚙️.
   - « ✔ Fait » / « ✔ Saisi » remet le compteur à zéro. « Copier le texte » prépare le texte à coller dans École Directe.
   - **✉️ Mail parents** : le soir, un brouillon de mail aux 2 parents est préparé (en tenant compte de vos échanges précédents sur École Directe). Objet « Compliments » pour les encouragements (seulement si l'élève n'a pas de remarques). **Rien n'est envoyé** : relis, copie, colle dans la messagerie École Directe.
 - **Aménagements** (fiche de l'élève) : tu choisis les motifs qui sont notés mais pas comptés. Le palier positif descend à 3, et l'outil te rappelle de valoriser l'élève. Ils n'apparaissent jamais sur la fiche parents. N'écris jamais de diagnostic.
