@@ -255,7 +255,7 @@ table.t tr.click { cursor: pointer; }
    Toutes les données restent sur l'appareil, chiffrées (AES-GCM) avec une clé
    protégée par le code du professeur (PBKDF2). Rien n'est envoyé sur internet.
    ========================================================= */
-const APP_VERSION = '2026-11-18.1';
+const APP_VERSION = '2026-11-20.1';
 const LS_KEYS = 'maclasse-cles', LS_DATA = 'maclasse-donnees', LS_TRY = 'maclasse-essais';
 const DAY = 864e5;
 const $ = (s, r = document) => r.querySelector(s);
@@ -792,7 +792,8 @@ function syBase(o) { return { ev: (o.events || []).map(evKey), dn: (o.done || []
 function syMergeList(loc, rem, key, base) {
   const b = new Set(base || []), L = new Map(loc.map((x) => [key(x), x])), Rm = new Map(rem.map((x) => [key(x), x]));
   const out = [];
-  for (const [k, x] of L) if (Rm.has(k) || !b.has(k)) out.push(x); // présent des deux côtés, ou ajouté ici
+  // présent des deux côtés (la version modifiée le plus récemment gagne : champ u, ex. précision ajoutée après coup), ou ajouté ici
+  for (const [k, x] of L) if (Rm.has(k)) out.push((Rm.get(k).u || 0) > (x.u || 0) ? Rm.get(k) : x); else if (!b.has(k)) out.push(x);
   for (const [k, x] of Rm) if (!L.has(k) && !b.has(k)) out.push(x); // ajouté sur l'autre appareil
   return out;
 }
@@ -1086,7 +1087,7 @@ function renderLesson() {
   $('#pm-stop')?.addEventListener('click', () => { view.pm = null; render(); });
   $$('[data-s]', app).forEach((el) => { el.onclick = () => {
     const stu = c.students.find((t) => t.id === el.dataset.s);
-    if (view.pm && S.motifs.some((m) => m.id === view.pm && !m.hidden)) record(c, stu, view.pm, ''); else openStudent(c, stu);
+    if (view.pm && S.motifs.some((m) => m.id === view.pm && !m.hidden)) recordAsk(c, stu, view.pm, ''); else openStudent(c, stu);
   }; });
 }
 function bindLessonBar(c, room) {
@@ -1109,13 +1110,44 @@ function openStudent(c, stu) {
   openSheet(`<div class="sheet-h"><div><b>${esc(stu.name)}</b>${am}<div class="small muted">Cette semaine : ${st.negCounted.length} / ${S.settings.neg} remarque${st.negCounted.length > 1 ? 's' : ''} · ${st.posCounted.length} / ${st.posTh} positif${st.posCounted.length > 1 ? 's' : ''}${st.graves.length ? ' · <b style="color:var(--red)">fait grave à saisir</b>' : ''}${st.level ? ` · <b style="color:var(--red)">${LVL[st.level]}</b>` : ''}</div></div><button class="ib" id="sh-x" aria-label="Fermer">✕</button></div>
     <input type="text" class="note" id="sh-note" maxlength="160" placeholder="Précision (facultatif) : ce qui s'est passé, sans jugement">
     ${motifButtons(stu)}
-    ${wk.length ? `<h3>Noté cette semaine</h3><ul class="hist">${wk.map((e) => `<li><span class="when">${dShort(e.t)} ${hm(e.t)}</span><span class="what">${motif(e.m).icon} ${esc(motif(e.m).label)}${e.n ? ` <span class="muted">— ${esc(e.n)}</span>` : ''}</span><button class="btn sm danger" data-rmev="${e.id}">✕ Enlever</button></li>`).join('')}</ul>` : ''}
+    ${wk.length ? `<h3>Noté cette semaine</h3><ul class="hist">${wk.map((e) => `<li><span class="when">${dShort(e.t)} ${hm(e.t)}</span><span class="what">${motif(e.m).icon} ${esc(motif(e.m).label)}${e.n ? ` <span class="muted">— ${esc(e.n)}</span>` : ''}</span><button class="btn sm" data-edn="${e.id}" aria-label="${e.n ? 'Modifier la précision' : 'Ajouter une précision'}">✏️ Précision</button><button class="btn sm danger" data-rmev="${e.id}">✕ Enlever</button></li>`).join('')}</ul>` : ''}
     <div class="row"><button class="btn" id="sh-fiche">Voir sa fiche (tout l'historique)</button></div>`, (o) => {
     $('#sh-x', o).onclick = closeSheet;
     $('#sh-fiche', o).onclick = () => go({ name: 'eleve', c: c.id, s: stu.id, back: { ...view } });
-    $$('.mb', o).forEach((b) => { b.onclick = () => record(c, stu, b.dataset.m, $('#sh-note', o).value.trim()); });
+    $$('.mb', o).forEach((b) => { b.onclick = () => recordAsk(c, stu, b.dataset.m, $('#sh-note', o).value.trim()); });
     $$('[data-rmev]', o).forEach((b) => { b.onclick = () => removeEvent(b.dataset.rmev, () => openStudent(c, stu)); });
+    $$('[data-edn]', o).forEach((b) => { b.onclick = () => editNote(b.dataset.edn, () => openStudent(c, stu)); });
   });
+}
+/** Motifs pour lesquels l'appli demande une précision à la saisie (demandé le 20/11/2026 pour « Attitude ») */
+const NOTE_ASK = ['att'];
+/** Petite fenêtre « Précision » : cb(texte) avec le texte saisi ('' = sans précision) ; onCancel si on ferme */
+function askNote(m, stuName, value, cb, onCancel) {
+  openSheet(`<div class="sheet-h"><div><b>${m.icon} ${esc(m.label)}</b>${stuName ? ` · ${esc(stuName)}` : ''}<div class="small muted">Précise ce qui s'est passé (les faits, sans jugement). Elle apparaîtra dans le suivi et les brouillons de mails.</div></div><button class="ib" id="an-x" aria-label="Fermer">✕</button></div>
+    <input type="text" class="note" id="an-note" maxlength="160" value="${esc(value || '')}" placeholder="Ex. : soupirs, refuse de sortir son cahier">
+    <div class="row"><button class="btn primary" id="an-ok">Enregistrer</button>${value ? '' : '<button class="btn" id="an-skip">Sans précision</button>'}</div>`, (o) => {
+    const inp = $('#an-note', o);
+    setTimeout(() => inp.focus(), 50);
+    $('#an-x', o).onclick = () => { closeSheet(); onCancel?.(); };
+    $('#an-ok', o).onclick = () => cb(inp.value.trim());
+    if ($('#an-skip', o)) $('#an-skip', o).onclick = () => cb('');
+    inp.onkeydown = (e) => { if (e.key === 'Enter') cb(inp.value.trim()); };
+  });
+}
+/** Enregistre un motif ; pour « Attitude » sans précision, la demande d'abord */
+function recordAsk(c, stu, mid, note) {
+  if (note || !NOTE_ASK.includes(mid)) return record(c, stu, mid, note);
+  askNote(motif(mid), stu.name, '', (n) => record(c, stu, mid, n));
+}
+/** Ajoute ou modifie la précision d'une remarque déjà notée */
+function editNote(id, after) {
+  const e = S.events.find((x) => x.id === id); if (!e) return;
+  const stu = S.classes.flatMap((k) => k.students).find((t) => t.id === e.s);
+  askNote(motif(e.m), stu?.name, e.n, (n) => {
+    if (n) e.n = n; else delete e.n;
+    e.u = Date.now(); save(); closeSheet(); render(); after?.();
+    toast(n ? 'Précision enregistrée.' : 'Précision enlevée.');
+  }, after);
 }
 /** Enlève une remarque (ou un positif) avec possibilité d'annuler ; after() rouvre l'écran d'où on vient */
 function removeEvent(id, after) {
@@ -1357,7 +1389,7 @@ function renderEleve() {
     <p class="small muted">À faire correspondre à ce qui est prévu dans son PAP ou PPS, en accord avec l'équipe. N'écris jamais de diagnostic.</p></details>`;
   // historique
   const items = [...evs.map((e) => ({ t: e.t, e })), ...done.map((d) => ({ t: d.t, d }))].sort((a, b) => b.t - a.t);
-  h += `<h2>Historique</h2><ul class="hist">${items.map((it) => it.e ? `<li><span class="when">${dShort(it.e.t)} ${hm(it.e.t)}</span><span class="what">${motif(it.e.m).icon} ${esc(motif(it.e.m).label)}${isAmenEvent(stu, it.e) ? '<span class="tag am">non compté</span>' : ''}${it.e.n ? ` <span class="muted">— ${esc(it.e.n)}</span>` : ''}</span><button class="x" data-del="${it.e.id}" aria-label="Enlever" title="Enlever">✕</button></li>` : `<li class="done"><span class="when">${dShort(it.d.t)} ${hm(it.d.t)}</span><span class="what">✔ ${it.d.type !== 'neg' ? 'Encouragement saisi sur École Directe' : it.d.lvl && LVL[it.d.lvl] ? LVL[it.d.lvl] : 'Observation saisie sur École Directe'}</span></li>`).join('') || '<li class="muted">Rien pour l\'instant.</li>'}</ul>`;
+  h += `<h2>Historique</h2><ul class="hist">${items.map((it) => it.e ? `<li><span class="when">${dShort(it.e.t)} ${hm(it.e.t)}</span><span class="what">${motif(it.e.m).icon} ${esc(motif(it.e.m).label)}${isAmenEvent(stu, it.e) ? '<span class="tag am">non compté</span>' : ''}${it.e.n ? ` <span class="muted">— ${esc(it.e.n)}</span>` : ''}</span><button class="x" data-edn="${it.e.id}" aria-label="Précision" title="${it.e.n ? 'Modifier la précision' : 'Ajouter une précision'}">✏️</button><button class="x" data-del="${it.e.id}" aria-label="Enlever" title="Enlever">✕</button></li>` : `<li class="done"><span class="when">${dShort(it.d.t)} ${hm(it.d.t)}</span><span class="what">✔ ${it.d.type !== 'neg' ? 'Encouragement saisi sur École Directe' : it.d.lvl && LVL[it.d.lvl] ? LVL[it.d.lvl] : 'Observation saisie sur École Directe'}</span></li>`).join('') || '<li class="muted">Rien pour l\'instant.</li>'}</ul>`;
   h += '</main>';
   mount(h, back);
   $('#e-per').onchange = (e) => { view.per = e.target.value === 'all' ? 'all' : Number(e.target.value); render(); };
@@ -1365,6 +1397,7 @@ function renderEleve() {
   $('#e-amen').onchange = (e) => { stu.amen = e.target.checked; if (stu.amen) { if (!stu.amenM.length) stu.amenM = amenableIds(); stu.since = Date.now(); } save(); render(); };
   $$('[data-am]').forEach((b) => { b.onchange = () => { stu.amenM = $$('[data-am]').filter((x) => x.checked).map((x) => x.dataset.am); save(); }; });
   $$('[data-del]').forEach((b) => { b.onclick = () => removeEvent(b.dataset.del); });
+  $$('[data-edn]').forEach((b) => { b.onclick = () => editNote(b.dataset.edn); });
   $$('[data-copy]').forEach((b) => { b.onclick = () => copyText(edText(stu, b.dataset.copy), b); });
   $$('[data-done]').forEach((b) => { b.onclick = () => markDone(stu, b.dataset.done); });
 }
